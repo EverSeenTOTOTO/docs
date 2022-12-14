@@ -1,6 +1,6 @@
 # xv6小记
 
-MIT开放的课程[CS6.S081](https://pdos.csail.mit.edu/6.828/2021/index.html)围绕他们自己实现的教学用操作系统xv6-riscv来讲述操作系统设计的方方面面，这里是一些课程笔记。我并没有观看课程视频，~因为板书和录音太鬼畜了~，主要看的是xv6-riscv手册和课程notes。
+MIT开放的课程[CS6.S081](https://pdos.csail.mit.edu/6.828/2021/index.html)围绕他们自己实现的教学用操作系统xv6-riscv来讲述操作系统设计的方方面面，这里是一些课程笔记。我并没有观看课程视频，~因为板书和录音太鬼畜了~，主要看的是xv6-riscv手册和课程notes，配合《OSTEP》食用更佳。
 
 ## 进程间切换
 
@@ -34,7 +34,11 @@ It does not save the program counter. Instead, `swtch` saves the *ra*  register,
 
 When `swtch` returns, it returns to the instructions pointed to by the restored *ra* register, that is, the instruction from which the new thread previously called `swtch`.
 
-RISC-V中*ra*是caller保存的寄存器，所以在调用`switch`时*ra*已经被设置为调用`switch`处下一条指令的地址，调用`switch`会改变*ra*，但这对CPU来说是透明的，CPU只会机械地返回到*ra*所指向的位置，从而实现了切换。
+RISC-V中*ra*是caller保存的寄存器，所以在调用`switch`时*ra*已经被设置为调用`switch`处下一条指令的地址，调用`switch`会改变*ra*，但这对CPU来说是透明的，CPU只会机械地返回到*ra*所指向的位置，从而实现了切换。原理和初始化进程时将*ra*修改为`main`以“返回”到`main`开始执行进程、和进程从系统调用中返回是一样的。 
+
+疑问：时钟中断到来的时候，在执行的是用户进程A，操作系统没有在执行，谁中止了用户程序并保存的现场？
+
+和系统调用一样，也是由硬件隐式地保存寄存器(A)到内核栈(A)，保存完之后才跳转到内核的陷阱处理程序。如果是进程间切换，在陷阱处理程序中还会发生第二种寄存器保存/恢复，由内核显式地保存寄存器(A)到PCB(A)，并恢复PCB(B)到寄存器(B)，这使得原本由A陷入的内核看起来好像是从B陷入的一样，再返回将返回到B进程。
 
 
 ## 递归锁的坏处
@@ -183,6 +187,10 @@ void wakeup(void *chan) {
 | Buffer cache | The buffer cache layer caches disk blocks and synchronizes access to them, making sure that only one kernel process at a time can modify the data stored in any particular block. |
 | Disk | The disk layer reads and writes blocks on an virtio hard drive. |
 
+疑问：如果在日志写入期间磁盘发生错误怎么办？
+
+由硬件保证原子性，比如磁盘应保证对一个512B块的写入是原子的，按块写入磁盘。
+
 ## 虚拟机的三种实现机制
 
 1. 软件模拟，编写一个能够执行机器指令的模拟器：切实可行，完全控制，但是慢；
@@ -221,7 +229,7 @@ w_lock(l):
 
 1. RCU idea 1: don't modify data in place; prepare a new copy.
   
-    和日志的思想一致，要么不做，要么全做（commiting write）。假如写者要改变链表`HEAD->E1->E2->E3->nil`中的`E2->x`：
+    和元数据日志的思想一致，要么不做，要么全做（commiting write，先写入被指对象，再写入指针对象）。假如写者要改变链表`HEAD->E1->E2->E3->nil`中的`E2->x`：
 
     ```c
     1. Lock
