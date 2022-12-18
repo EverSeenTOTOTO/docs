@@ -32,8 +32,8 @@
 
 ## 其他一些值得留意的模式/方法论
 
-+ 基于历史的分析预测：分支预测、多级反馈队列（MLFQ）、LRU
++ 基于历史的分析预测：分支预测、多级反馈队列（MLFQ）、LRU、KMP
 + 迭代到不动点（Fixpoint）：优化问题
-+ 模式匹配（Pattern Match）：递归下降、元编程、函数重载、类型推断、逻辑编程
++ 模式匹配（Pattern Matching）：递归下降、元编程、函数重载、类型推断、逻辑编程
 + 虚拟化、标准化与介入（Interposition）：分页、容器与集装箱
-+ 混合折衷hybrid：组相联、段页、两阶段锁、Hybrid Web App
++ 混合折衷Hybrid：组相联、段页、两阶段锁（spin-sleep)、Hybrid Web App

@@ -1,6 +1,6 @@
 # 最小化的Linux
 
-突发奇想想将写的一些c++小demo构建为面向`riscv64`的可执行文件然后在`riscv64`上跑起来。找了一下看到一个[risc-pk](https://github.com/riscv-software-src/riscv-pk)有点符合需求，不过它也只支持静态链接的elf文件。既然同时在学习操作系统，不妨自己做一个最小的linux系统，用`qemu-system-riscv64`跑起来再尝试运行elf文件。
+突发奇想想将写的一些c++小demo构建为面向`riscv64`的可执行文件然后在`riscv64`上跑起来。既然同时在学习操作系统，不妨自己做一个最小的linux系统，用`qemu-system-riscv64`跑起来再尝试运行elf文件。
 
 和网上的大部分教程差不多，我们的最小的linux系统有三个部分：内核、`busybox`和`init`脚本。完整的示例项目可以看[这里](https://github.com/EverSeenTOTOTO/mini-linux-riscv)，文中主要记录了踩的一些坑。
 

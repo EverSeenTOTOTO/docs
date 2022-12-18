@@ -26,7 +26,7 @@ Racket中基于模式匹配-替换的宏机制，光靠猜也能猜出大致的�
 从根本上来说，宏转换器只是将一个`syntax-object`转换（tramsform）为另一个`syntax-object`的函数。
 :::
 
-仅仅匹配-替换还不足以说明Racket宏机制的有趣之处，我们可以在处理宏的时候做一些**编译期**计算。注意下面的`(identifier? #'id)`，它更像是一个assert语句，去掉它几乎不会影响下面代码的功能，其价值在于辅助模式的匹配。我们可以对匹配到的语法对象`#'id`进行计算，并人为指明模式的优先级，返回的模板也不必直接是`syntax-object`，可以是最终返回`syntax-object`的表达式，这大大拓展了宏的能力。
+仅仅匹配-替换还不足以说明Racket宏机制的有趣之处，我们可以在处理宏的时候做一些**编译期**计算。注意下面的`(identifier? #'id)`，它更像是一个assert语句，去掉它几乎不会影响下面代码的功能，其价值在于辅助模式的匹配。我们对匹配到的语法对象`#'id`进行计算，并人为指明模式的优先级，返回的模板也不必直接是`syntax-object`，可以是最终返回`syntax-object`的表达式，这大大拓展了宏的能力。
 
 ```scheme
 (define-syntax forty-two
@@ -120,7 +120,7 @@ When the identifier appears as a `set!` target, the entire `set!` expression is 
 
 首先正式地认识一下`datum`和`syntax`对象。在Racket（Scheme，Lisp？）中，代码和数据的分界线不是那么明显，我们可以在一个代码片段前加上`'`来把它当作数据一样处理：`'(+ 1 2)`，这让人联想到`eval("1 + 2")`中的字符串，但`datum`性质上和`symbol`更相似一点。如果给`datum`绑定上必要的元信息，包括作用域和在源码中的位置等，就成了一个`syntax`对象。因此存在从两者之间转换的方法`syntax->datum`和`datum->syntax`，前者剥离元信息，后者附加元信息。
 
-`datum->syntax`接受的第一个参数是语法对象，`datum->syntax`会提取它的词法作用域信息用来新建语法对象。我们可以利用这个机制破坏Racket宏的卫生性，下面是一个典型的例子：
+`datum->syntax`接受的第一个参数是语法对象，`datum->syntax`会提取它的词法作用域信息用来新建语法对象。可以利用这个机制破坏Racket宏的卫生性，下面是一个典型的例子：
 
 ```scheme
 (define-syntax def-bar
@@ -206,7 +206,7 @@ When the identifier appears as a `set!` target, the entire `set!` expression is 
 
 Rust中可以通过`macro_rules!`定义基于模式匹配-替换的宏，语法结构和`syntax-case`很像，只是在书写模式的时候有些晦涩，因为它需要我们手动指明模式变量的类型。
 
-下面的定义会无限展开，原因我们刚刚提到过了：
+下面的定义会无限展开，原因刚刚提到过了：
 
 ```rust
 macro_rules! fib {
@@ -319,11 +319,11 @@ fn main() {
 
 ## Procedural macros （过程宏）
 
-过程宏的关键词是编译期计算，编译器使用我们预先定义好的逻辑对一段代码进行处理，这种自由度极大地提升了语言的可拓展性，前面Racket的介绍已经初见端倪了。甚至存在从一个很小的语言内核，完全利用过程宏去拓展自身的语言。下面我们主要谈论Rust中的过程宏。不过在那之前，我们先来看一下在Java、Typescript、Python等语言中活跃的装饰器（Decorator），原因是之前在Rust CN Conf 2020上看到用Rust过程宏实现装饰器的Talk，一下子让我想起了在Typescript里面的类似经历。
+过程宏的关键词是编译期计算，编译器使用我们预先定义好的逻辑对一段代码进行处理，这种自由度极大地提升了语言的可拓展性，前面Racket的介绍已经初见端倪了。甚至存在从一个很小的语言内核，完全利用过程宏去拓展自身的语言。下面主要谈论Rust中的过程宏。不过在那之前，我们先来看一下在Java、Typescript、Python等语言中活跃的装饰器（Decorator），原因是之前在Rust CN Conf 2020上看到用Rust过程宏实现装饰器的Talk，一下子让我想起了在Typescript里面的类似经历。
 
 ### Typescript中的装饰器
 
-装饰器看起来很神奇，往类、属性、函数或参数上一放，就能改变它们的默认行为。但其实除了装饰器API自身提供的功能之外，大多数时候，我们可以仅仅把装饰器当作一个标记，通过这个标记，我们可以操作目标的一些元信息，至于实现什么样的功能，那完全要看个人的想象力。
+装饰器看起来很神奇，往类、属性、函数或参数上一放，就能改变它们的默认行为。但其实除了装饰器API自身提供的功能之外，大多数时候，我们可以仅仅把装饰器当作一个标记，通过这个标记，可以操作目标的一些元信息，至于实现什么样的功能，那完全要看个人的想象力。
 
 在Typescript中，时常和装饰器一起使用的，是reflect-metadata这个库，它提供了操作元信息的能力。下面有一个属性装饰器的例子，`@nothrow()`的功能是让函数不会抛出错误。实现思路其实很简单，利用`Reflect.defineMetadata`在目标函数上存放一些元信息，构造实例的时候，利用`Reflect.getMetadata`取出元信息，然后用魔改后的方法覆盖实例上原有的方法：
 
@@ -388,7 +388,7 @@ Rust中的attribute出现的位置几乎和装饰器一致，而它的过程宏�
 
 Rust的过程宏与预处理宏的重要差别在于，过程宏是将宏标记所作用的一整个代码片段交给我们进行处理，而不仅仅是宏自身。Rust中的过程宏分为三类，function-like、derive和attribute，function-like我们已经在前面`fib!`举过例子了，下面是用attribute宏实现属性装饰器的例子，derive宏可以用来实现类装饰器。
 
-Rust官方提供了一个`proc_macro`库用于定义过程宏，每个过程宏可以简单地看成是将一些`TokenStream`转换成另一些`TokenStream`的函数。在实践中，经常还会用到syn和quote两个库，前者提供了从`TokenStream`到AST的转换，后者反之，目的都是为了方便我们操作代码片段。
+Rust官方提供了一个`proc_macro`库用于定义过程宏，每个过程宏可以简单地看成是将一些`TokenStream`转换成另一些`TokenStream`的函数。在实践中，经常还会用到syn和quote两个库，前者提供了从`TokenStream`到AST的转换，后者反之，目的都是为了方便操作代码片段。
 
 syn分为若干模块，常用的`parse`模块用于解析AST，`visit`和`visit-mut`用访问者模式对AST上的结点进行操作。比较值得一提的是，大多数时候我们并不需要从零开始像搭积木一样构造某个代码片段的AST，Rust的过程宏可以操作一个代码片段，因此存在这样的宏，我们写好想要的模板，直接用它转换成所需的AST再嵌入到待修改的AST上去，也就是syn里的`parse_quote!`，可以类比Racket中的`(syntax <template>)`。
 
