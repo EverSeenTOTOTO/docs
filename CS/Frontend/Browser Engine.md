@@ -63,17 +63,17 @@ class RenderObject{
 
 ### 对`<style>`和`<script>`标签的处理
 
-CSS和JS都是正经CFG，可以用能处理CFG的一些Parser生成器生成的Parser去解析它们。
+CSS和JS都是正经CFG，可以用能处理CFG的Parser生成器生成的Parser去解析它们。
 
-对`<script>`代码块的处理是同步的。遇到一个`<script>`标记后，对HTML文档的解析将被暂停，直到`<script>`代表的资源下载和解析执行完成才会继续。可以用`defer`或者`async`对一些`<script>`进行标记，以便让它们不会阻塞HTML文档的解析。
+对`<script>`代码块的处理是同步的。遇到一个`<script>`标记后，对HTML文档的解析将被暂停，直到`<script>`代表的资源下载和解析执行完成才会继续，这是为了防止脚本中对DOM的操作破坏HTML解析的结果，因此`<script>`脚本引用通常放在`body`尾部。可以用`defer`或者`async`对一些`<script>`进行标记，以便让它们不会阻塞HTML文档的解析。
 
 一个优化手段是在处理`<script>`标签时对HTML文档的剩余部分进行投机解析（Speculative parsing），然后找出还有哪些资源需要额外下载从而并行地处理它们。投机解析器并不操作DOM，只处理对外部资源的引用。
 
-:::info
-有没有可能投机解析DOM呢？
-:::
+理论上层叠样式表并不直接修改DOM结构，应该可以在解析HTML的同时去处理它们，实际上由于`<script>`中有访问DOM样式的需求，而`<script>`是同步的，如果在执行脚本的时候样式还没有准备好将导致错误结果。Webkit采用的做法是当一个`<script>`试图操作特定样式属性时，阻塞这块代码直到层叠样式表处理完毕。所以通常`<style>`放在`body`前面，和HTML并行解析。
 
-看起来层叠样式表并不直接修改DOM结构，应该可以在解析HTML的同时去处理它们，但实际上由于`<script>`中有访问DOM样式的需求，而`<script>`是同步的，如果在执行脚本的时候样式还没有准备好将导致错误结果。Webkit采用的做法是当一个`<script>`试图操作特定样式属性时，阻塞这块代码直到层叠样式表处理完毕。
+:::info
+想到两个点，一是投机解析HTML并不操作DOM，但保留结果，在确定了`<script>`不会改变DOM时可以直接复用之；另一点是看起来`<script>`也可以采用相同的思路，和HTML一起解析，要操作DOM时阻塞其执行。
+:::
 
 ### Render Tree和DOM Tree
 
@@ -95,7 +95,7 @@ Render Tree和DOM Tree对应但不完全相等，不可见元素等不会被插�
 
 Firefox的Rule Tree和Style Context Tree：
 
-Rule Tree储存CSS规则，避免重复计算的同时共享上层数据。在Rule Tree中的层级越深，优先级越高。整个计算过程是惰性的，只有在需要计算结点样式的时候才添加到树中。Style Context按照领域划分为不同的结构，例如有的负责`color`于是只有一个属性，有的负责`margin`因此有四个属性。一个结构体中的属性要么是继承的，要么是非继承的（有定义，或者`reset`使用默认值）。
+Rule Tree储存CSS规则，在避免重复计算的同时共享上层数据。Rule Tree中的层级越深，优先级越高。整个计算过程是惰性的，只有需要计算结点样式的时候才添加到树中。Style Context按照领域划分为不同的结构，例如有的负责`color`于是只有一个属性，有的负责`margin`因此有四个属性。一个结构体中的属性要么是继承的，要么是非继承的（有定义，或者`reset`使用默认值）。
 
 根据Rule Tree构建Style Context Tree，~结合文章中的例子看都有点晕~：
 
@@ -161,13 +161,15 @@ Webkit的RenderLayer树：看成是Render Tree的合并，处于同一层级的R
 
 ### 动态改变造成的影响
 
+即什么时候回流什么时候重绘：
+
 1. Changes to an elements color will cause only repaint of the element. 
 
 2. Changes to the element position will cause layout and repaint of the element, its children and possibly siblings. 
 
 3. Adding a DOM node will cause layout and repaint of the node. 
 
-4. Major changes, like increasing font size of the "html" element, will cause invalidation of caches, relyout and repaint of the entire tree.
+4. Major changes, like increasing font size of the "html" element, will cause invalidation of caches, relayout and repaint of the entire tree.
 
 ## 主流浏览器信息
 
@@ -177,6 +179,6 @@ Webkit的RenderLayer树：看成是Render Tree的合并，处于同一层级的R
 | Gecko, Servo, Firefox | WebRender | SpiderMonkey |
 | Webkit, Safari | Webkit | JavascriptCore |
 | Android WebView | | |
-| WkWebView | | |
+| WKWebView | | |
 | Microsoft Edge Webview2 | | |
 

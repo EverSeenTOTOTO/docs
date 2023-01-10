@@ -48,7 +48,7 @@ type _9 = next<_8>;
 ```
 
 :::Info
-留意`is_same`，利用了判断两个集合相等的手法。不过这个实现有个缺点是`is_same<boolean, boolean>`得到的不是`true`，而是`boolean`，很奇怪。
+留意`is_same`，利用了判断两个集合相等的手法。不过这个实现有个缺点是`is_same<boolean, boolean>`得到的不是`true`，而是`boolean`，根因是条件类型的Distributive特性。
 :::
 
 当然仅仅表示出来数字是远远不够的，重点在于这种表示要能够方便的进行数值运算。首先考虑加法，上面的表示法其实表现的是数字之间的位置，那么给定两个数`lhs`和`rhs`，加法可以表示为这两个数相对于`_0`的位置，计算方法是“此消彼长”，我们使`lhs`不断`prev`，同时`rhs`不断`next`，当`lhs`等于`_0`的时候`rhs`就演变成了结果。这个实现用到了递归的思想，这个ts是支持的：
@@ -305,14 +305,14 @@ struct foo {
 };
 
 using L = type_list<char, char, int>;
-using x = map<L, foo<void>>::type; // void并无实际作用，仅仅为了提取出模板名称foo
+using x = map<L, foo<void>>::type; // void并无实际作用，仅仅为了提取出函数名称foo
 
 cout << is_same_v<x, type_list<int, int, int>> << endl; // true
 ```
 
 ### 插曲：惰性求值
 
-你也许会觉得`map<L<>, F<_>>`的偏特化有些多余，尝试将`map`写成下面的格式，但无法通过编译。原因在于当前实现是立即求值的（把`typename X::type`理解为对`X`求值），当入参为`type_list<>`的时候即使处在`true`分支上，编译器仍然尝试推导出`typename map<typename List::rest, F<_>>::type`，形成无限嵌套，导致出错。如果想沿用下面的写法需要实现惰性求值，也即`concat`、`map`的实现需一直返回的是一个元函数类型，不到最后`X::type`不要让编译器去推断结果。
+你也许会觉得`map<L<>, F<_>>`的偏特化有些多余，尝试将`map`写成下面的格式，但无法通过编译。原因在于当前实现是立即求值的（把`typename X::type`理解为对`X`求值），当入参为`type_list<>`的时候即使处在`true`分支上，编译器仍然尝试推导出`typename map<typename List::rest, F<_>>::type`，形成无限嵌套，导致出错。如果想沿用下面的写法需要实现惰性求值，也即`concat`、`map`的实现需一直返回的是一个元函数类型，不到最后求`X::type`不要让编译器去推断结果。
 
 ```cpp
 template<typename, typename>
@@ -334,8 +334,7 @@ struct map<L<Args...>, F<_>> {
 
 :::Info
 可以把`typename X::type`理解成函数调用`X()`，当前实现的`concat`只支持`concat<List, List>`作为入参，返回`List`，即`concat`的类型是`(List, List) -> List`，
-应考虑设计为`(List, List) -> () -> List`甚至`(() -> List, () -> List) -> () -> List`，在使用者调用`using X = <balabala>`构造了复杂的类型之后，直到`X::type`才真正推导其类型，而过程中各种中间类型
-始终都保持为类似元函数的形式，包括`X`。这样也可以加快编译速度。
+应考虑设计为`(List, List) -> () -> List`甚至`(() -> List, () -> List) -> () -> List`，在使用者调用`using X = <balabala>`构造了复杂的类型之后，直到`X::type`才真正推导其类型，而过程中各种中间类型始终都保持为类似元函数的形式，包括`X`。这样也可以加快编译速度。
 
 ```cpp
 // 最典型的元函数，熟悉函数式编程语言的朋友们应该不陌生
@@ -348,7 +347,7 @@ struct identity {
 
 :::
 
-让我们回到正题，既然泛型类型在元编程取代了函数的地位，那也就意味着在ts类型元编程里面函数不是“一等公民”，函数名不能作为参数传递。因此这里我们退而求其次，使用一个简单的模式匹配实现部分目标。下面的`match`接受一个类型入参和一个模式列表，缺点是模式列表的todo（每项的第二个参数））不能是函数（不带参数的泛型类型名），但这已经足够我们写出很多程序了。
+让我们回到正题，既然泛型类型在元编程取代了函数的地位，那也就意味着在ts类型元编程里面函数不是“一等公民”，函数名不能作为参数传递，ts类型语言不是函数式语言。因此这里我们退而求其次，使用一个简单的模式匹配实现部分目标。下面的`match`接受一个类型入参`V`和一个待比对分派的模式列表`Patterns`，缺点是模式列表的todo（每项的第二个参数））不能是函数（不带参数的泛型类型名），但这已经足够我们写出很多程序了。
 
 ```ts
 // 模式匹配
@@ -379,7 +378,7 @@ type filter<L, Patterns> = L extends [... infer _]
   : never;
 ```
 
-用法：
+用例：
 
 ```ts
 // void
@@ -744,7 +743,7 @@ cout << baz(x = 2, y = 2) << endl; // 1
 
 ## 实例：实现微型lisp
 
-第二个例子在之前的ts元编程语言中实现一个lisp的子集，进一步验证元编程的威力。实现的思路大同小异，无非是把c++模板偏特化换成了ts的条件类型。下面的代码中`placeholder`和上文`placeholder`实际上是一样的，比较值得注意的是`env_lookup`和`apply`的实现，`apply`负责创建变量作用域（更准确的说是`eval_lambda`在创建`closure`时就捕获了作用域），`env_lookup`比对当前要找的占位符名字，若恰在当前作用域则返回作用域内的值，若没有找到，则递归地前往上层作用域（`binding`的第三个参数）查找变量赋值。和上面c++例子中在具名参数列表中找到对应赋值语句有异曲同工之妙。
+第二个例子在之前的ts元编程语言中实现一个lisp的子集，进一步验证元编程的威力。实现的思路大同小异，无非是把c++模板偏特化换成了ts的条件类型。下面的代码中`placeholder`和上文`placeholder`性质上是一样的，比较值得注意的是`env_lookup`和`apply`的实现，`apply`负责创建变量作用域（更准确的说是`eval_lambda`在创建`closure`时就捕获了作用域），`env_lookup`比对当前要找的占位符名字，若恰在当前作用域则返回作用域内的值，若没有找到，则递归地前往上层作用域（`binding`的第三个参数）查找变量赋值。和上面c++例子中在具名参数列表中找到对应赋值语句有异曲同工之妙。
 
 ```ts
 // 右侧并不重要，只是需要一个独一无二的类型
@@ -769,7 +768,7 @@ export type env_lookup<Ph, Env> = Env extends binding<Ph, infer Value, infer _>
     ? env_lookup<Ph, UpperEnv>
     : never;
 
-// 闭包应用
+// 闭包调用
 export type apply<Closure, Args> = Closure extends closure<lambda<infer Ph, infer Body>, infer Env>
   ? evaluate<Body, binding<Ph, Args, Env>>
   : never;
