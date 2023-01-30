@@ -10,14 +10,14 @@
 
 3. 兜兜转转，有时惊觉还是故乡的小镇好。人生偶需“猛回头”，只是注意不要闪了脖子。
 
-    <img src="./hometown-2.webp" style="width: 800px">
     <img src="./hometown-3.webp" style="width: 800px">
-
-4. 远处群山的苍茫背影，承载了诸多儿时的梦想与野望。倘若年轻十岁，我或许可以用更加细腻伤感的口吻描述此刻的心境，只是如今已习惯了在种种论述性的文山书海里扑腾，因此，不写也罢。
-
-    <img src="./hometown-4.webp" style="width: 800px">
 
 5. 冬天的太阳有一种磅礴荒凉的美。
 
+    <img src="./hometown-9.webp" style="width: 800px">
     <img src="./hometown-6.webp" style="width: 800px">
+
+6. 永远的天空，拍摄于2017年
+
     <img src="./hometown-7.webp" style="width: 800px">
+    <img src="./hometown-8.webp" style="width: 800px">
