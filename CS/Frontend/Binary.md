@@ -44,7 +44,7 @@ function isLittleEndian() {
 ```
 
 
-除了`ArrayBuffer`之外，还有一个`SharedArrayBuffer`，它和`ArrayBuffer`的区别在于`Transferable`。通俗的说就是`ArrayBuffer`一旦作为`postMessage`的参数传递给其他线程（`web worker`）之后，本线程关联的内存资源将被`detach`，资源被`attach`给其他线程了，这时在本线程调用`buffer.byteLength`将得到`0`。而`SharedArrayBuffer`作为`postMessage`的参数时，双方都持有这块内存，故通常需要使用`Atomic`来操作该内存区域以防止竞态。~谁说js没有多线程的~。出于浏览器安全性的考虑，使用`SharedArrayBuffer`还需要注意[跨域问题](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)。
+除了`ArrayBuffer`之外，还有一个`SharedArrayBuffer`，它和`ArrayBuffer`的区别在于`Transferable`。通俗的说就是`ArrayBuffer`一旦作为`postMessage`的参数传递给其他线程（`web worker`）之后，本线程关联的内存资源将被`detach`，资源被`attach`给其他线程了，这时在本线程调用`buffer.byteLength`将得到`0`。而`SharedArrayBuffer`作为`postMessage`的参数时，双方都持有这块内存，故通常需要使用`Atomic`来操作该内存区域以防止竞态。~然后又造了一遍锁和信号量的轮子，谁说js没有多线程的~。出于浏览器安全性的考虑，使用`SharedArrayBuffer`还需要注意[跨域问题](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)。
 
 ## 优秀的“中间人”
 
@@ -56,7 +56,7 @@ function isLittleEndian() {
 
 ## 编码转换
 
-可以考虑`TextEncoder`和`TextDecoder`，但是存在兼容性问题，需考虑polyfill
+可以考虑`TextEncoder`和`TextDecoder`，但是存在兼容性问题，需考虑polyfill，或者用iconv。
 
 ```js
 const str = [
@@ -93,10 +93,10 @@ const blob2str = (blob: Blob) => blob.arrayBuffer().then((ab) => new Response(ab
 ```ts
 const blob2DataUrl = (blob: Blob | File) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader();
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
+
   reader.onload = (e) => resolve(e.target?.result);
   reader.onerror = (e) => reject(e);
+
   reader.readAsDataURL(blob);
   // reader.readAsText(blob);
   // reader.readAsArrayBuffer(blob);
@@ -104,7 +104,7 @@ const blob2DataUrl = (blob: Blob | File) => new Promise<string>((resolve, reject
 });
 ```
 
-### `Blob` 转 `ObjectUrl`
+### `Blob` 转 `ObjectURL`
 
 ```ts
 const blob2ObjectUrl = (blob: Blob | File) => URL.createObjectURL(blob);

@@ -1,6 +1,6 @@
 # Generator自动执行器
 
-今天也是炫技的一天呢～原意是设法将异步回调变成瀑布执行，然后写出了一个比较奇怪的模式，觉得有趣的话在[Github](https://gist.github.com/EverSeenTOTOTO/ac0a60de5568be71f6fc80c9e155ac7f)点个Star哦。
+今天也是炫技的一天呢～原意是设法将异步回调变成瀑布执行，然后写出了一个比较奇怪的模式。
 
 ## Js版本
 

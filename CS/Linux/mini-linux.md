@@ -8,7 +8,7 @@
 
 首先需要能够将内核和`busybox`构建成面向`riscv64`平台的编译工具包，也就是我们常见的`gcc`、`ld`、`objdump`这些东西。这里有个大坑，不要使用`apt`拉取到的发行版本`riscv64-linux-gnu-*`，貌似`qemu`还是`riscv`做了不向下兼容的变更，最后运行内核的时候会报类似`rom: requested regions overlap (rom mrom.reset. free=<address>, addr=<address>)`的错误。因此我们还是克隆[这个仓库](https://github.com/riscv-collab/riscv-gnu-toolchain.git)自行构建的好。
 
-> 后续折腾的时候意识到可能不是什么向下兼容的问题，而是内核启动的机制，使用文末Fedora提供的一个预编译Berkeley Boot Loader作为`kernel`参数就可以启动发行版操作系统，操作系统是以挂载到磁盘的文件镜像形式出现的，而我们的方法是将Linux内核做为`kernel`参数并为其配置一个文件系统。
+> 后续折腾的时候意识到可能不是什么向下兼容的问题，而是内核启动的机制，使用文末Fedora提供的一个预编译Berkeley Boot Loader作为`kernel`参数就可以启动发行版操作系统，操作系统是以挂载到磁盘的文件镜像形式出现的。
 
 ## 构建`busybox`
 
@@ -24,7 +24,7 @@
 
 ### 无文件系统镜像
 
-首先尝试无文件系统镜像的，这时我们可以使用`cpio`制作一个`initramfs.cpio.gz`，然后指定内核启动的`initrd`为它。这个东西我的理解不是很深刻，它似乎和系统崩溃时操作系统会将我们“drop in”到一个终端时所处的那个环境有关联，是一个临时的文件系统，我们可以在这个环境里使用`busybox`，并用`mount`挂载真实的文件系统，修复导致崩溃的问题等等。
+首先尝试无文件系统镜像的，这时我们可以使用`cpio`制作一个`initramfs.cpio.gz`，然后指定内核启动的`initrd`为它。这个东西我的理解不是很深刻，似乎和内核启动过程中的一个临时文件系统rootfs有关。
 
 要实现这种启动方式，创建一个文件夹`initramfs`，在根目录下创建一个`init`文件，这里的关键在于`init`文件中的这两行，提供了操作系统运行所必需的目录结构：
 
