@@ -1,4 +1,6 @@
-# 趣谈
+# 阅读
+
+## 趣谈
 
 * 44年前我们就把人类送上月球了，但现在我们仍然无法在CSS中实现垂直居中。
 * 所谓monad，不过是自函子范畴上的幺半群罢了。
@@ -31,3 +33,4 @@
 * 该文读起来晦涩难懂，不建议阅读。（《OSTEP》书中关于《The Single UNIX Specification, Version 3》的吐嘈）
 * Twenty years from now you will be more disappointed by the things that you didn't do than by the ones you did do. So throw off the bowlines. Sail away from the safe harbor. Catch the trade winds in your sails. Explore. Dream. Discover.（Minecraft结束语）
 * Great minds discuss semantics, average minds discuss syntax and small minds discuss syntax of comments.
+* If there’s a book that you want to read, but it hasn’t been written yet, then you must write it.
