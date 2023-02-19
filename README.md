@@ -28,6 +28,27 @@
 
 此博客（~严格来说不是一个博客~）使用[pen](https://github.com/EverSeenTOTOTO/pen-middleware)搭建。pen是一个简易的cli工具，可以实时编辑预览markdown文件。默认集成了katex、copy等功能。**近期更新了v5版本，你可以在[这里](/CS/Frontend/Pen.md)看到一些细节**。
 
+### 基于GFM
+
+输入：
+
+```
+* [ ] todo
+* [x] done
+
+| it | supports | GFM | table |
+| - | :- | -: | :-: |
+```
+
+
+输出：
+
+* [ ] todo
+* [x] done
+
+| it | supports | GFM | table |
+| - | :- | -: | :-: |
+
 ### 使用highlight.js
 
 ```typescript
@@ -61,7 +82,7 @@ $\sqrt{3x-1}+(1+x)^2$
 
 输入：
 
-```markdown
+```
 :::warn
 warn
 :::

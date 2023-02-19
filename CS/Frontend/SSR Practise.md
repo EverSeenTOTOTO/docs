@@ -46,7 +46,7 @@
 
 SSR之所以成立，是因为不管是React、Vue还是Svetle等，这些框架都具备将View层转化为原始HTML的能力。以往CSR模式，这一过程发生在用户的浏览器上，要在用户加载了框架代码之后才发生。而web渲染的顺序包括生成DOM树->生成CSSOM树->合并成最终的DOM结构，这一过程中如果有需要加载和执行的js脚本将大幅度阻塞渲染进度，如果脚本中操作DOM的话还会破坏已经生成的DOM树导致重复工作，这也是为什么我们通常将stylesheet放在`<head>`中而scripts放在HTML文档的尾部，可以说js脚本在关键渲染路径中的次序相对靠后。在纯粹的CSR模式下，用户拿到的DOM主体空空荡荡，只有一个应用的挂载点`<div id="root"></div>`，真正的页面要到框架代码完全加载并执行之后才渲染出来挂载到该`<div>`上，这期间用户看到的都是白屏，造成不良用户体验。
 
-既然前端框架具备直接将View转为HTML文本的能力，一个优化的思路就是回到以前jsp的时代，在服务端预先填充数据并渲染出最终的HTML，交付给用户。但这并不意味着CSR的过程就不会发生了，在用户的浏览器上客户端渲染还会进行，因此自然就会产生一个疑问：在服务端渲染了一遍，客户端拿到静态资源之后还会再渲染一次，不会产生冲突吗？于是引出两个名词：“**同构应用（isomorphic application）**”和“**水化（hydrate）**”。
+既然前端框架具备直接将VDOM转为HTML文本的能力，一个优化的思路就是回到以前jsp的时代，在服务端预先填充数据并渲染出最终的HTML，交付给用户。但这并不意味着CSR的过程就不会发生了，在用户的浏览器上客户端渲染还会进行，因此自然就会产生一个疑问：在服务端渲染了一遍，客户端拿到静态资源之后还会再渲染一次，不会产生冲突吗？于是引出两个名词：“**同构应用（isomorphic application）**”和“**水化（hydrate）**”。
 
 同构应用很好理解，以往我们只需要将应用构建为跑在web环境的静态资源就行了，现在还需要将应用构建成能够跑在服务器环境（假定是nodejs）的一份，并且对应用中只能运行在某一端的部分做特别处理，例如用到web或nodejs特定API的代码。但总体上这两端的渲染功能都是相同的，因此称为同构应用。而客户端浏览器拿到已经渲染的结果之后，也不必从零开始渲染，而是利用该结果仅做一些添加事件句柄等页面活化工作即可，这个过程被称为“水化”。可以将渲染好的静态HTML文档想象成是干涸的土地，水化之后能够响应用户操作的页面才是有了水生态而生机勃勃的土壤。
 
@@ -54,7 +54,7 @@ SSR之所以成立，是因为不管是React、Vue还是Svetle等，这些框架
 
 + 最终运行在客户浏览器上的`index.client.ts`：
 
-    ```js 
+    ```js
     import createApp from './main.ts';
 
     const app = createApp();
@@ -83,7 +83,7 @@ SSR之所以成立，是因为不管是React、Vue还是Svetle等，这些框架
 
 + 服务器代码，以express为例
 
-    ```js 
+    ```js
     const render = require('dist/index.server.js');
     const server = express();
 
@@ -96,7 +96,7 @@ SSR之所以成立，是因为不管是React、Vue还是Svetle等，这些框架
 
 既然在服务端同构应用里仍然要先定位到用户所访问的页面再进行渲染，也就意味着应用的路由功能需要同时在web端和nodejs端发挥作用。好在主流的路由方案都提供了双端的实现，我们要做的就是根据所在环境的不同使用不同的实现：
 
-```js 
+```js
 function createRouter() {
     return isBrowser() ? createClientRouter() : createServerRouter(),
 }
@@ -104,7 +104,7 @@ function createRouter() {
 
 问题还没完，正如马上就要提到的，为了渲染出真实的页面，我们往往还需要在渲染之前进行页面数据的预取（prefetch），于是获知当前正在访问的是哪个页面并执行它的状态预取逻辑就成了必要的需求。如果是`vue-router`，它提供了`router.currentRoute.value.matched`来获取当前访问的组件实例（`vue-router@3`的API稍有不同），但React侧我常用的`react-router-dom`却没有找到相应的API。这个问题的一种常见解决方案是利用约定式路由，规定页面级组件都放置在`pages/`根目录下，然后配合构建工具拿到页面所实现的状态预取接口。例如vite提供了一个方便的`import.meta.glob`方法：
 
-```js 
+```js
 const pages = import.meta.globEager('../pages/*.tsx');
 
 const routes = Object.keys(pages).map((path) => {
@@ -126,7 +126,7 @@ const routes = Object.keys(pages).map((path) => {
 
 + 服务端应用：
 
-```js 
+```js
 import serializeJavascript from 'serialize-javascript';
 import { renderToString } from 'framework';
 import createApp from './main.ts';
@@ -147,13 +147,13 @@ export const render = (req, res) => {
     injectHtml(html, serialize(app.state));
 
     res.setHeader('Content-Type', 'text/html');
-    res.end(renderToString(app);
+    res.end(html);
 }
 ```
 
 + 客户端应用
 
-```js 
+```js
 import createApp from './main.ts';
 
 const app = createApp();
@@ -194,14 +194,14 @@ app.mount(document.getElementById('root'));
 
 2. 使用构建工具提供的服务器，在原有`clientApp`开发服务器的基础上，放弃`server`的HMR，仅考虑`serverApp`。我们可以借助构建工具的配置选项，将构建后memfs中的`serverApp`以中间件的形式注入到开发服务器中，在webpack@5中可用的配置选项有`devServer.setupMiddleware`，在vite中是`vite.middleware.use`。这种方案的优势是较为简单，并且适合迁移已有的配置，在模板应用中我采用的就是这种方案；其缺点自然是不便调试`server`代码。
 
-    ```js 
+    ```js
     const createDevSSRMiddleware = (devServer) => (req, res) => {
         const ofs = devServer.compiler.outputFileSystem;
 
         try {
             // 需要能从内存文件系统加载模块的patchedRequire
             const { render } = await patchedRequire(ofs, 'dist/index.server.js');
-             
+
             await render({ req, res });
           } catch {
             next();
@@ -229,14 +229,14 @@ app.mount(document.getElementById('root'));
 ```js
 export const render = (req, res) => {
     // ...
-    
+
     renderToStream(app).pipe(res);
 }
 ```
 
 但这又带来了新的问题，上面我们提到，通常会采用客户端已构建好的HTML作为渲染模板，渲染后还有手动嵌入序列化好的状态与样式字符串的需求，改成流式之后，如何能在合适的地方嵌入内容呢？当然是自己写入`res`流了：
 
-```js 
+```js
 export const render = (req, res) => {
     // ...
     // 将模板html划分为头和尾两个部分
@@ -261,7 +261,7 @@ export const render = (req, res) => {
 
 + Home.tsx
 
-    ```js 
+    ```js
     import { lazy, Suspense } from 'react';
 
     const Hello = lazy(() => import('./comonents/Hello'));
@@ -278,9 +278,9 @@ export const render = (req, res) => {
     export default Home;
     ```
 
-+ Hello.tsx 
++ Hello.tsx
 
-    ```js 
+    ```js
     import { useStore } from '@/store';
     import { observer } from 'mobx-react-lite';
 
@@ -302,7 +302,7 @@ export const render = (req, res) => {
 
 下面是我们打印出的依次写入到HTML流中的内容，`<!--$?-->`和`<!--/$-->`都是占位符的标记，用于表示一个“Suspense Boundary”的起始和终止，而其中的`<template>`就是待替换的占位符。我们可以清晰地看出最开始只渲染了同步加载的应用主干，而`<Suspense>`里的组件还未就绪，渲染的是其`fallback`的内容。随后`<Hello />`组件就绪，于是React又向流中写入了待替换为的`<Hello />`组件渲染结果以及替换代码：
 
-```html 
+```html
 <div>
     <button>about</button>
     <!--$?-->
@@ -312,7 +312,7 @@ export const render = (req, res) => {
 </div>
 
 <div hidden id="S:0">
-    <div>hello 
+    <div>hello
     <!-- -->
     react and vite!
     <!-- -->
@@ -326,11 +326,11 @@ export const render = (req, res) => {
 
 替换后的结果如下：
 
-```js 
+```js
 <div>
     <button>about</button>
     <!--$-->
-    <div>hello 
+    <div>hello
     <!-- -->
     react and vite!
     <!-- -->
@@ -348,7 +348,7 @@ export const render = (req, res) => {
 ```js
 const createStream = (res: Response) => new Writable({
   write(chunk, encoding, callback) {
-    
+
   let rules = generateNewStyleRulesSinceLastCall();
   if (rules) {
     // Write it before the HTML to ensure that the CSS is available and
@@ -365,7 +365,7 @@ const createStream = (res: Response) => new Writable({
 
 1. 由于现在整个流的生命周期是不确定的，只有React知道和控制什么时候流会终止，我们希望像以前那样在HTML文档流结束之前嵌入一些内容就很困难了。甚至在官方的[Library Upgrade Guide](https://github.com/reactwg/react-18/discussions/114)中也只有修改HTML首部的教程。对vite这样的构建工具来说就更不友好了。在模板项目中，我选择的是提前写入文档尾部内容，因此整个流的内容大致是`<html><head><body><sync ssr content></body></html><async ssr content>`，目前还没有找到更好的解决方案；
 
-    ```js 
+    ```js
     const stream = ReactDOMServer.renderToPipeableStream(
         <App />,
         {
@@ -420,7 +420,7 @@ const createStream = (res: Response) => new Writable({
 
     因为我喜欢用HTML注释作为替换占位符，而`HtmlWebpackPlugin`在构建的时候默认会清理掉注释，故后端没有做替换注入，造成不匹配。这个只要配置下`removeComments: false`就行了。
 
-3. `vue-loader`对scoped css处理导致的mismatch 
+3. `vue-loader`对scoped css处理导致的mismatch
 
     如果查看`vue-loader`源码的话，会发现它在开发和生产环境下给组件`scoped css`计算unique id的方式不同，于是某一次因为我的配置失误，两端构建时的环境变量不同，导致`data-v-[id]`不同，匹配失败。这也提醒了我们，如果有类似的生成unique id的行为，要特别注意保持在双端渲染过程中的一致性。
 
@@ -438,7 +438,7 @@ const createStream = (res: Response) => new Writable({
 
 ## 其他
 
-1. 构建工具选型一定要做足够的功课，自行封装脚手架也注意做好隔离与防腐。🦊痛，太痛了！ 
+1. 构建工具选型一定要做足够的功课，自行封装脚手架也注意做好隔离与防腐。🦊痛，太痛了！
 
 2. 设计时考虑缓存，在预取数据不变的情况下可以绕过渲染，既能减轻服务端计算压力又能提高性能。
 
