@@ -36,7 +36,7 @@
 * [ ] todo
 * [x] done
 
-| it | supports | GFM | table |
+| Everyone | is | an | island |
 | - | :- | -: | :-: |
 ```
 
@@ -46,7 +46,7 @@
 * [ ] todo
 * [x] done
 
-| it | supports | GFM | table |
+| Everyone | is | an | island |
 | - | :- | -: | :-: |
 
 ### 使用highlight.js

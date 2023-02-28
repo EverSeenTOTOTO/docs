@@ -34,3 +34,4 @@
 * Twenty years from now you will be more disappointed by the things that you didn't do than by the ones you did do. So throw off the bowlines. Sail away from the safe harbor. Catch the trade winds in your sails. Explore. Dream. Discover.（Minecraft结束语）
 * Great minds discuss semantics, average minds discuss syntax and small minds discuss syntax of comments.
 * If there’s a book that you want to read, but it hasn’t been written yet, then you must write it.
+* $\int_{\text{birth}}^{\text{death}} \text{study}dt = \text{life}$.
