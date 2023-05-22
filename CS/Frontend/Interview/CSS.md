@@ -2,7 +2,7 @@
 
 ## 选择器优先级
 
-内容基本来自<https://developer.mozilla.org/zh-CN/docs/Learn/CSS/Building_blocks/Cascade_and_inheritance>，[这里](https://specifishity.com/)有个有趣的图示。
+内容基本来自[MDN](https://developer.mozilla.org/zh-CN/docs/Learn/CSS/Building_blocks/Cascade_and_inheritance)，[这里](https://specifishity.com/)有个有趣的图示。
 
 以下选择器优先级是递增的：
 
