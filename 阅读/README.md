@@ -35,3 +35,4 @@
 * Great minds discuss semantics, average minds discuss syntax and small minds discuss syntax of comments.
 * If there’s a book that you want to read, but it hasn’t been written yet, then you must write it.
 * $\int_{\text{birth}}^{\text{death}} \text{study}dt = \text{life}$.
+* 归根结底，博客、播客、短视频都是一个人表达自己的地方，是他们用数字形式说 “这就是我” 的方式。

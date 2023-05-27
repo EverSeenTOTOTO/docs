@@ -1045,20 +1045,7 @@ Fiber Reconciliation架构，如果要我用一句话来解释它就是“应用
 
 这里主要讨论`setState`同步和异步的话题，更准确来说是批量还是非批量的问题。
 
-首先排除一个无关问题，下面代码片段中，无论将`console.log(state.count)`包裹在宏任务还是微任务里都只能打印出旧值，但这是因为闭包捕获的缘故：
-
-```ts
-const App = () => {
-  const [state, setState] = useState({ count: 0 });
-
-  return <button onClick={() => {
-    setState({ count: state.count + 1 });
-    queueMicrotask(() => console.log(state.count)); // 总是旧值
-  }}>Count: {state.count}</button>;
-};
-```
-
-在class中，即可看到`setState`的异步表现。下面的代码片段，打印的是旧值，但如果将`console.log`语句包裹在一个宏任务或微任务里，将打印出最新值：
+下面的代码片段，`console.log`打印的是旧值，但如果将`console.log`语句包裹在一个宏任务或微任务里，将打印出最新值：
 
 ```ts
 class App extends React.Component {
@@ -1086,7 +1073,7 @@ class App extends React.Component {
 }
 ```
 
-此外在class组件中添加这段代码，在React@18以前会打印`0, 2`，在React@18以后会打印`0, 1`，换成宏任务也一样：
+此外在类组件中添加这段代码，在React@18以前会打印`0, 2`，在React@18以后会打印`0, 1`，换成宏任务也一样：
 
 ```ts
 componentDidMount() {
@@ -1132,9 +1119,9 @@ componentDidMount() {
 
 有意思的是这一点在Vue中也有体现，Vue中鼓励子组件通过事件告知父组件更新状态，进而传播到子组件中。下一节Vue `nextTick`给出的父子通信的例子中，子组件通过事件改变父组件状态并等待其传递到自身的过程也是异步的，以至于需要`nextTick`来获取最新`props`，说明Vue背后也有相同的考量。
 
-异步渲染的第二个理由是我们可以人为控制不同的`setState`调用的优先级，其意义甚至超出了合并渲染带来的性能优化。这个例子我也遭遇过：我们经常会在加载过程中显示一个加载动画，但如果加载很快的话，会产生一个闪烁的效果，有效的合并有助于减少这种闪烁的出现。
+异步渲染的另一个理由是我们可以人为控制不同`setState`调用的优先级，其意义甚至超出了合并渲染带来的性能优化。这个例子很常见：我们经常会在加载过程中显示一个加载动画，但如果加载很快的话，会产生一个闪烁的效果，有效的合并有助于减少这种闪烁的出现。
 
-第二个问题产生的原因是在v18以前，React只会合并React事件回调及生命周期回调之类的状态变更，对其他异步回调并未做合并。追踪[此处代码](https://github.com/facebook/react/blob/v17.0.2/packages/react-reconciler/src/ReactFiberWorkLoop.new.js#L528)能看到一些实现细节。在v18只会，React推出了称为“Automatic Batching”的特性，现在无论在何处的状态更新都会在安全的情况下被合并，具体可见此[Discussion](https://github.com/reactwg/react-18/discussions/21)。
+第二和第三个问题产生的原因是在v18以前，React只会合并React事件回调及生命周期回调之类的状态变更，对其他异步回调并未做合并。追踪[此处代码](https://github.com/facebook/react/blob/v17.0.2/packages/react-reconciler/src/ReactFiberWorkLoop.new.js#L528)能看到一些实现细节。在v18只会，React推出了称为“Automatic Batching”的特性，现在无论在何处的状态更新都会在安全的情况下被合并，具体可见此[Discussion](https://github.com/reactwg/react-18/discussions/21)。
 
 ### Vue nextTick
 
@@ -1142,7 +1129,7 @@ componentDidMount() {
 
 有个我之前一直没有真正搞清楚的问题：我们在改变状态后立即打印`this.$el`上的属性，看到的是旧值，说明内部DiffPatch将状态更新反馈到DOM结点上是一个异步的过程，既然是异步的，那也需要某种机制实现，而`nextTick`注册的回调也是异步的，它们之间是如何确保先后关系的呢？容易想到的解释是Vue内部也用了和React `setState`类似的合并状态更新并批量处理的机制，带着这个想法去读源码可以找到[证据](https://github.com/vuejs/vue/blob/7161176cd0dff10d65ab58e266018aff2660610f/src/core/observer/scheduler.ts#L166)，`queueWatcher`在[watcher](https://github.com/vuejs/vue/blob/7161176cd0dff10d65ab58e266018aff2660610f/src/core/observer/watcher.ts#L196)中依赖变化时调用，其flush副作用队列的行为抽象为一个回调`flushSchedulerQueue`，在内部也是使用的`nextTick`进行调度，和用户注册的`nextTick`回调处在同一个队列中。
 
-基于这个理解，我们可以推测并验证`watch`和`nextTick`触发的顺序。下面的代码片段中，打印的顺序是`nextTick 1`、`watcher`、`nextTick 2`，因为第一个`this.$nextTick`注册的回调先于`watch`回调入队。如果将`this.msg = 'hello world'`语句调整到第一个`this.$nextTick`前，则打印的顺序是`watcher`、`nextTick 1`、`nextTick 2`。
+基于这个理解，我们可以推测并验证`watch`和`nextTick`触发的顺序。下面的代码片段中，打印的顺序是`nextTick 1`、`watcher`、`nextTick 2`，因为第一个`this.$nextTick`注册的回调先于随后状态改变导致的`watch`回调入队。如果将`this.msg = 'hello world'`语句调整到第一个`this.$nextTick`前，则打印的顺序是`watcher`、`nextTick 1`、`nextTick 2`。
 
 ```html
 <script>
