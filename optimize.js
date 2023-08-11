@@ -27,7 +27,7 @@ function editFile(dirname, filename) {
 
   let dirty = false;
 
-  for (line of lines) {
+  for (const line of lines) {
     if (SUFFIX.test(line)) {
       let newLine = line.replace(SUFFIX, '.webp');
 
@@ -43,6 +43,8 @@ function editFile(dirname, filename) {
 }
 
 function scanDir(dir) {
+  if (/node_modules/.test(dir)) return;
+
   fs.readdirSync(dir).map(child => {
     const fullpath = path.join(dir, child);
 
