@@ -5,6 +5,7 @@
 ## Neovim
 
 ```lua
+-- 在拷贝后将内容写入xclip等中介Buffer
 autocmd("TextYankPost", {
   pattern = "*",
   callback = function()
@@ -31,10 +32,12 @@ autocmd("TextYankPost", {
 ## Tmux
 
 ```bash
-bind v copy-mode # 绑定v键为进入复制模式
+# 绑定v键为进入复制模式
+bind v copy-mode
 bind-key -T copy-mode-vi v send-keys -X begin-selection
 unbind -T copy-mode-vi Enter
 
+# 绑定y键拷贝
 if-shell -b '[ "$(uname -s)" == "Darwin" ]' {
   bind -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "pbcopy"
   bind P run "tmux set-buffer \"\$(reattach-to-user-namespace pbpaste)\"; tmux paste-buffer"

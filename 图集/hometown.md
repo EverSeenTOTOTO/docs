@@ -14,7 +14,6 @@
 
 4.  冬天的太阳有一种磅礴荒凉的美。
 
-     <img src="./hometown-9.webp" style="width: 800px">
      <img src="./hometown-6.webp" style="width: 800px">
 
 5.  永远的天空，拍摄于2017年
