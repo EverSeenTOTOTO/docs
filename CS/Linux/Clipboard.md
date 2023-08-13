@@ -2,7 +2,7 @@
 
 在Neovim、Tmux和系统剪贴板之间复制粘贴，考虑Mac、Linux及Linux下X11和Wayland的差异（借助`pbcopy`、`xclip`和`wl-copy`）：
 
-## Neovim 
+## Neovim
 
 ```lua
 autocmd("TextYankPost", {
@@ -27,6 +27,7 @@ autocmd("TextYankPost", {
   end
 })
 ```
+
 ## Tmux
 
 ```bash

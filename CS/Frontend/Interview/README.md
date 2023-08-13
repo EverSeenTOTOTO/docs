@@ -6,14 +6,14 @@
 
 ## 目录
 
-+ [Javascript相关](./Javascript.md)
-+ [Typescript相关](./Typescript.md)
-+ [NodeJS相关](./NodeJS.md)
-+ [Web相关](./Web.md)
-+ [CSS相关](./CSS.md)
-+ [主流Web框架](./Framework.md)
-+ [前端工程化](./Engineering.md)
-+ [工作经验谈](./Experience.md)
+*   [Javascript相关](./Javascript.md)
+*   [Typescript相关](./Typescript.md)
+*   [NodeJS相关](./NodeJS.md)
+*   [Web相关](./Web.md)
+*   [CSS相关](./CSS.md)
+*   [主流Web框架](./Framework.md)
+*   [前端工程化](./Engineering.md)
+*   [工作经验谈](./Experience.md)
 
 ## 段子
 
@@ -23,7 +23,7 @@
   <img src="./jmjp.webp" width="600" />
 </div>
 
----
+***
 
 虽然是个段子图，不过也说出了初级前端开发者的一些困境：入门门槛低，从业者良莠不齐，存在竞争压力；日常需求技术深度不足，容易化身“切图仔”，出现“一年工作经验用了十年”的情况，有经验积累，但缺乏技术进步；知识广度上也容易闭塞视野，用我自己的话说就是总是处于下游，总在学“新东西”，偶尔有一些发挥能动性和创造力的机会，也往往是“重复造轮子”。在这种情况下，部分开发者想到的方法不是实事求是提升自己，做大蛋糕，而是“把水搅浑”，故弄玄虚发明词汇，人为构建行业壁垒，最后往往是一地鸡毛，不仅恶化行业生态，更浪费了社会资源。
 

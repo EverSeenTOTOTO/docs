@@ -14,36 +14,36 @@ Semver规范和npm等依赖管理工具结合起来时有很多注意点，其�
 
 首先理清楚`npm install`的运行逻辑：
 
-1. 检查现有的`node_modules`文件夹，生成依赖树，并制作一份克隆；
-2. 获取`package.json`并分析声明的依赖版本信息，比对并更新克隆树，这个过程有两个要求：
-    1. 依赖尽可能扁平化，即缺失新增的依赖会尽可能靠近树的上层，对应`node_modules`根目录；
-    2. 不能破坏其他已有模块的依赖关系；
-3. 比对两棵树，生成相应的安装、修改等动作并执行。
+1.  检查现有的`node_modules`文件夹，生成依赖树，并制作一份克隆；
+2.  获取`package.json`并分析声明的依赖版本信息，比对并更新克隆树，这个过程有两个要求：
+    1.  依赖尽可能扁平化，即缺失新增的依赖会尽可能靠近树的上层，对应`node_modules`根目录；
+    2.  不能破坏其他已有模块的依赖关系；
+3.  比对两棵树，生成相应的安装、修改等动作并执行。
 
 `package-lock.json`（也包括`yarn.lock`等）的出现是为了解决“相同的`package.json`安装后却可能得到不同的`node_modules`依赖树”的问题，造成这一问题的原因有很多，最主要的就是`npm install`那个万恶的“incremental install”特性，在Semver版本范围内尽可能拉取最新的包，应该说其初衷是好的，使用户获取的依赖保持在一个较新的版本，囊括各种新功能和BUG修复，方便扁平化依赖树，但现实中却带来了不少工程上的问题：
 
-1. 依赖提供方难免因为疏忽甚至恶意投毒，提供了不符合Semver规范的版本号，例如有破坏性变更却未更新Major版本号，在npm社区已经出现多起恶性事件，连我自己也被2021年colors的`LIBERTY`事件所波及；
-2. 有时我们需要用到某些依赖的具体实现，这些内部细节随时可能改变且不至破坏Semver规范，如果未对`package.json`中声明的依赖范围做严格限定的话某次更新后功能就可能被破坏；
-3. 即使一切都符合规范，开发者执行`npm install`的时机、本地是否有缓存、使用的镜像源是否相同乃至下载依赖请求的顺序不同都可能导致同一版本声明实际生成的依赖树却不同，再加上开发者自身的问题，容易造成以下场景：声明版本为`^2.6.0`，A实际安装的是`2.7.12`版本，B实际安装的是`2.6.12`版本，两者都符合Semver规范，但A没有按照声明仅使用`2.6.x`范围内的功能，而使用了`2.7.x`的新功能，当B合并了A的代码后出现问题，而A自己复现不了，成为典型的X/Y问题。
+1.  依赖提供方难免因为疏忽甚至恶意投毒，提供了不符合Semver规范的版本号，例如有破坏性变更却未更新Major版本号，在npm社区已经出现多起恶性事件，连我自己也被2021年colors的`LIBERTY`事件所波及；
+2.  有时我们需要用到某些依赖的具体实现，这些内部细节随时可能改变且不至破坏Semver规范，如果未对`package.json`中声明的依赖范围做严格限定的话某次更新后功能就可能被破坏；
+3.  即使一切都符合规范，开发者执行`npm install`的时机、本地是否有缓存、使用的镜像源是否相同乃至下载依赖请求的顺序不同都可能导致同一版本声明实际生成的依赖树却不同，再加上开发者自身的问题，容易造成以下场景：声明版本为`^2.6.0`，A实际安装的是`2.7.12`版本，B实际安装的是`2.6.12`版本，两者都符合Semver规范，但A没有按照声明仅使用`2.6.x`范围内的功能，而使用了`2.7.x`的新功能，当B合并了A的代码后出现问题，而A自己复现不了，成为典型的X/Y问题。
 
 `package-lock.json`存放的就是这么一个依赖树结构。当项目中没有`package-lock.json`，或者`package-lock.json`中的依赖不符合`package.json`的要求时，执行`npm install`或者`npm update`等涉及依赖树变更的命令将同步`package-lock.json`到最新；如果已有`package-lock.json`，且和`package.json`按照Semver规则相适配，那皆大欢喜，执行`npm install`时会直接根据`package-lock.json`的结构拉取依赖，使不同开发者、不同时机看到的依赖的行为符合预期。
 
 `package-lock.json`出现后解决了一部分“incremental install”带来的问题，但总有些时候，由于开发者的疏忽没有提交与当前`package.json`相适配的`package-lock.json`，而`npm install`的逻辑不是报告问题而是默默地更新`package-lock.json`，这就还会带来依赖不一致的问题，在流水线环境这种对`package-lock.json`的静默更改我们甚至感知不到。于是`npm ci`应运而生，它提供了更严格的安装策略：
 
-1. 如果项目没有`package-lock.json`，或者`package.json`与`package-lock.json`对不上，直接报错；
-2. 先删除本地已有的`node_modules`文件夹并重新安装；
-3. 严格按照`package-lock.json`的声明安装依赖，且不会变更之。
+1.  如果项目没有`package-lock.json`，或者`package.json`与`package-lock.json`对不上，直接报错；
+2.  先删除本地已有的`node_modules`文件夹并重新安装；
+3.  严格按照`package-lock.json`的声明安装依赖，且不会变更之。
 
 应该说在不涉及依赖变更的情况下，例如仅仅是拉取项目复现一下问题，`npm ci`是更合适的安装依赖的手段，有效避免莫名其妙的自动升级所带来的干扰。虽然每次都会删除`node_modules`重新安装，但`npm ci`跳过了扫描`node_modules`比对依赖树等步骤，安装速度实际上还快了不少。
 
 最后是一些我自己总结的npm最佳实践：
 
-1. 永远不要手动修改`package.json`中的依赖版本，应使用`npm install`以便同步`package-lock.json`；
-2. 不使用`package.json`中未明确声明的依赖或某版本新功能，不对`node_modules`的结构抱有任何额外假设；
-3. `package-lock.json`始终保持与`package.json`相匹配且总是提交到Git仓库，判断`package-lock.json`是否为最新的方法是执行`npm install`看`package-lock.json`有没有变更；
-4. 不同分支同时变更项目依赖，合并时容易造成`package-lock.json`大范围的冲突，我的解决方法一般是找到两者变更之前的`package-lock.json`，手动执行`npm install`，或者基于一方的`package-lock.json`再施加另一方的变更。无论采取哪一种最后都需要对功能回归测试；
-5. `npm install pkg@version`之后在`package.json`中会生成`^version`这样范围式的版本，通常我会尽可能修改为确定的版本，上生产环境的内容要的不是新潮而是稳定。缺点当然也有，容易造成依赖树的臃肿，例如两个范围声明`^2.6.1`、`^2.6.2`在依赖树根目录下安装一个`2.6.2`版本就够用了，也保证了单例，而两个具体声明`2.6.1`、`2.6.2`则无法扁平化；
-6. 优先使用`npm ci`以便获得项目过去预期的行为。
+1.  永远不要手动修改`package.json`中的依赖版本，应使用`npm install`以便同步`package-lock.json`；
+2.  不使用`package.json`中未明确声明的依赖或某版本新功能，不对`node_modules`的结构抱有任何额外假设；
+3.  `package-lock.json`始终保持与`package.json`相匹配且总是提交到Git仓库，判断`package-lock.json`是否为最新的方法是执行`npm install`看`package-lock.json`有没有变更；
+4.  不同分支同时变更项目依赖，合并时容易造成`package-lock.json`大范围的冲突，我的解决方法一般是找到两者变更之前的`package-lock.json`，手动执行`npm install`，或者基于一方的`package-lock.json`再施加另一方的变更。无论采取哪一种最后都需要对功能回归测试；
+5.  `npm install pkg@version`之后在`package.json`中会生成`^version`这样范围式的版本，通常我会尽可能修改为确定的版本，上生产环境的内容要的不是新潮而是稳定。缺点当然也有，容易造成依赖树的臃肿，例如两个范围声明`^2.6.1`、`^2.6.2`在依赖树根目录下安装一个`2.6.2`版本就够用了，也保证了单例，而两个具体声明`2.6.1`、`2.6.2`则无法扁平化；
+6.  优先使用`npm ci`以便获得项目过去预期的行为。
 
 ## `dependencies`、`devDependencies`和`peerDependencies`
 
@@ -66,10 +66,9 @@ Semver规范和npm等依赖管理工具结合起来时有很多注意点，其�
 
 ## `npm`、`yarn`和`pnpm`
 
-当下npm和yarn classic都采用了扁平化依赖以解决一部分`node_modules`臃肿的问题，yarn classic可以看作是npm的上位替代，在速度上有一定的提升。但生成`node_modules`是个IO密集型任务，即使有本地缓存也由于大量的文件复制动作使速度的提升有限，每个项目都有一个自己的`node_modules`也造成了磁盘空间的浪费（某知名梗图：宇宙中最重的东西.webp）。在这个基础上，开发者们不约而同地想到了跳过安装`node_modules`，由依赖管理工具告知软件真正的依赖存放在哪里。于是出现了yarn berry和pnpm，yarn berry的脑回路比较奇怪，可能是时代局限性，它选择侵入NodeJS的模块加载过程，提供了一个需要预执行的脚本来告知模块放置的位置，而且这个脚本很大，不少于500K，我感觉这或许也是yarn berry一直不温不火的原因。而pnpm的思路比较自然，采用软链和硬链，软链针对目录结构，硬链针对模块文件，在`node_modules`这一层尽量不做扁平化，这使得pnpm的安装速度极快并避免了扁平化带来的很多问题，但也带来了依赖嵌套层级过深在Windows上可能导致的问题，在pnpm的Q&A有更多介绍，我就是因为以前在Windows上使用pnpm时遇到太多问题，一直没留下太多好感。
+当下npm和yarn classic都采用了扁平化依赖以解决一部分`node_modules`臃肿的问题，yarn classic可以看作是npm的上位替代，在速度上有一定的提升。但生成`node_modules`是个IO密集型任务，即使有本地缓存也由于大量的文件复制动作使速度的提升有限，每个项目都有一个自己的`node_modules`也造成了磁盘空间的浪费（某知名梗图：宇宙中最重的东西.webp）。在这个基础上，开发者们不约而同地想到了跳过安装`node_modules`，由依赖管理工具告知软件真正的依赖存放在哪里。于是出现了yarn berry和pnpm，yarn berry的脑回路比较奇怪，可能是时代局限性，它选择侵入NodeJS的模块加载过程，提供了一个需要预执行的脚本来告知模块放置的位置，而且这个脚本很大，不少于500K，我感觉这或许也是yarn berry一直不温不火的原因。而pnpm的思路比较自然，采用软链和硬链，软链针对目录结构，硬链针对模块文件，在`node_modules`这一层尽量不做扁平化，这使得pnpm的安装速度极快并避免了扁平化带来的很多问题，但也带来了依赖嵌套层级过深在Windows上可能导致的问题，在pnpm的Q\&A有更多介绍，我就是因为以前在Windows上使用pnpm时遇到太多问题，一直没留下太多好感。
 
 写到这里忽然想起来去年看过的某互联网大厂团队对依赖管理工具的改进，除了用Rust重写之外，我还有印象的是他们将规划依赖树的任务从客户端提到了服务器端，安装依赖的时候直接基于服务器下发的依赖关系进行安装，感觉这或许是解决npm诸多依赖问题的一个重要改进。
-
 
 最后讲个笑话，某次求助`npm run --help`的时候看到`npm run`的别名，乐了半天：
 
@@ -85,11 +84,11 @@ aliases: run, rum, urn
 
 Monorepo管理工具通常会提供如下功能：
 
-1. 提炼各组件的共同依赖统一管理，节省磁盘空间的同时保证行为一致；
-2. 链接各种交叉依赖，仓库内各组件不需要手动安装彼此到自己的`node_modules`中；
-3. 站在仓库角度执行命令，例如统一构建统一发布等；
-4. 分析各组件的依赖关系及变更内容来决定发布内容，当然也支持独立发布；
-5. 生成依赖图便于掌握项目全局信息。
+1.  提炼各组件的共同依赖统一管理，节省磁盘空间的同时保证行为一致；
+2.  链接各种交叉依赖，仓库内各组件不需要手动安装彼此到自己的`node_modules`中；
+3.  站在仓库角度执行命令，例如统一构建统一发布等；
+4.  分析各组件的依赖关系及变更内容来决定发布内容，当然也支持独立发布；
+5.  生成依赖图便于掌握项目全局信息。
 
 > 2022年听说lerna已经不再更新了，原班人马都跑去做Nx去了，虽然文档上写得很漂亮“Your favorite tool is alive and well”。
 
@@ -128,9 +127,9 @@ Loader应用的顺序默认与声明的顺序是相反的。这里先由`sass-lo
 
 关于Loader顺序我想起一个真实的需求，实现组件的按需加载和自动加载。我们以前用的UI组件比较庞大，鱼龙混杂在一起竟有2MB之多，引入的时候要么利用Vue插件做全量导入，要么逐个手动导入特定组件非常麻烦，这种情况实现组件的自动按需加载就很有意义。当时我还不知道babel-plugin-import的存在，所以参考了[quasar的实现](https://github.com/quasarframework/vue-cli-plugin-quasar)，具体步骤是：
 
-1. 在UI组件构建的同时生成一份组件的清单，列出每个组件的导入名称和文件路径；
-2. 实现两个Webpack Loader，分别处理Vue SFC和JS代码，前者提取模板语法中使用到组件的名字，在`<script>`块中根据清单嵌入相应的导入代码，后者处理渲染函数方式的用法；
-3. 确保处理SFC配置的Loader在`vue-loader`之前应用，在`@vue/cli`项目中可使用`webpack-chain`提供的`.before(vue-loader)`，自己实现则利用Loader顺序调整现有配置。
+1.  在UI组件构建的同时生成一份组件的清单，列出每个组件的导入名称和文件路径；
+2.  实现两个Webpack Loader，分别处理Vue SFC和JS代码，前者提取模板语法中使用到组件的名字，在`<script>`块中根据清单嵌入相应的导入代码，后者处理渲染函数方式的用法；
+3.  确保处理SFC配置的Loader在`vue-loader`之前应用，在`@vue/cli`项目中可使用`webpack-chain`提供的`.before(vue-loader)`，自己实现则利用Loader顺序调整现有配置。
 
 ##### VueLoader的实现
 
@@ -225,7 +224,7 @@ if (incomingQuery.type) {
 }
 ```
 
----
+***
 
 #### Resolve
 
@@ -237,7 +236,7 @@ WDS的原理说简单也挺简单的，用FS Watcher监听本地文件变更，�
 
 #### Optimization
 
-Webpack默认的构建优化配置已经很完善了，一般很少动Optimization配置，最多是将`minimize`设置为`false`以观察构建产物。Optimization最主要的配置项可能是`splitChunks`，控制构建产物chunks的质量和数量，因为和应用加载时的脚本解析时间与网络请求数挂钩，将直接影响到应用性能。比如Webpack默认会将`node_modules`下的依赖打包到同一个文件 _vendor_ 里，在项目外部依赖较多时可能出现几MB的 _vendor_ ，严重影响性能，有时还需要进一步划分。
+Webpack默认的构建优化配置已经很完善了，一般很少动Optimization配置，最多是将`minimize`设置为`false`以观察构建产物。Optimization最主要的配置项可能是`splitChunks`，控制构建产物chunks的质量和数量，因为和应用加载时的脚本解析时间与网络请求数挂钩，将直接影响到应用性能。比如Webpack默认会将`node_modules`下的依赖打包到同一个文件 *vendor* 里，在项目外部依赖较多时可能出现几MB的 *vendor* ，严重影响性能，有时还需要进一步划分。
 
 #### Devtools
 
@@ -249,13 +248,13 @@ Externals也是比较常用的一个配置项，被标记为External的模块其
 
 关于Externals我还想起一个Webpack的BUG，综合性很强，我花了整整一个下午才找到问题的根源。找出原因之后可以用如下简化的`main.js`文件及`webpack.config.js`复现问题：
 
-+ main.js
+*   main.js
 
     ```js
     import('./lazy')
     ```
 
-+ webpack.config.js
+*   webpack.config.js
 
     ```js
     module.exports = {
@@ -290,35 +289,33 @@ Cannot convert undefined or null to object
 
 真实情况当然要复杂很多，上面给出的`output.chunkFilename`其实是`@vue/cli@3`的默认配置，我们有一个项目模板基于`@vue/cli@3`，某业务开发团队同事使用该项目模板时遭遇此问题，提交Issue之后我感到非常奇怪，因为这个模板已经存在很久了一直蛮正常的，我自己现场克隆仓库也没复现问题。于是和该同事沟通确实能100%复现并给了个分支给我们，对方拉取模板之后作了一些变更，但只是写了些业务代码，也没有动过构建配置，看起来和其他使用该模板的应用别无二致。那就没什么办法了，先用`git bitsect`和“控制变量法”找到最早出问题的变更，比对更改，各种尝试大致推断出和某模块引入与否（其实是代码规模）有关，再根据报错信息尝试去找Webpack中出错的源头，然而`Cannot convert undefined or null to object`甚至不是Webpack源码的一部分，而是JS的一个常见报错，比如`Object.keys(undefined)`，因此想到从Webpack的统计信息查起，以`webpack/lib/Stats.js`为起点通过打印日志一点点往上找，在`stats.toJson`函数适当位置添加`console.log(compilation.errors)`才算有了点眉目，原始的报错堆栈其实是这样：
 
-```
-ChunkRenderError: Cannot convert undefined or null to object
-    at Compilation.createHash (/node_modules/webpack/lib/Compilation.js:1981:22)
-    at /node_modules/webpack/lib/Compilation.js:1386:9
-    at AsyncSeriesHook.eval [as callAsync] (eval at create (/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:6:1)
-    at AsyncSeriesHook.lazyCompileHook (/node_modules/tapable/lib/Hook.js:154:20)
-    at Compilation.seal (/node_modules/webpack/lib/Compilation.js:1342:27)
-    at /node_modules/webpack/lib/Compiler.js:675:18
-    at /node_modules/webpack/lib/Compilation.js:1261:4
-    at AsyncSeriesHook.eval [as callAsync] (eval at create (/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:15:1)
-    at AsyncSeriesHook.lazyCompileHook (/node_modules/tapable/lib/Hook.js:154:20)
-    at Compilation.finish (/node_modules/webpack/lib/Compilation.js:1253:28)
-```
+    ChunkRenderError: Cannot convert undefined or null to object
+        at Compilation.createHash (/node_modules/webpack/lib/Compilation.js:1981:22)
+        at /node_modules/webpack/lib/Compilation.js:1386:9
+        at AsyncSeriesHook.eval [as callAsync] (eval at create (/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:6:1)
+        at AsyncSeriesHook.lazyCompileHook (/node_modules/tapable/lib/Hook.js:154:20)
+        at Compilation.seal (/node_modules/webpack/lib/Compilation.js:1342:27)
+        at /node_modules/webpack/lib/Compiler.js:675:18
+        at /node_modules/webpack/lib/Compilation.js:1261:4
+        at AsyncSeriesHook.eval [as callAsync] (eval at create (/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:15:1)
+        at AsyncSeriesHook.lazyCompileHook (/node_modules/tapable/lib/Hook.js:154:20)
+        at Compilation.finish (/node_modules/webpack/lib/Compilation.js:1253:28)
 
 从`Compilation.createHash`开始将添加打印日志和盲猜出错可能并修改配置验证结合起来，又过去很长时间，中途一度自闭到想放弃，应该说最终能找出问题本质有很大的运气成分，也多亏Webpack源码没有压缩混淆。Issue上我给出的复盘如下：
 
-1. 我们在`@vue/cli`配置的基础上，对Webpack的`splitChunks`配置及`externals`配置做了进一步修改，一些模块会被打包到同一个chunk里面去以减少网络请求数，还有些模块被设置为`externals`由App原生缓存预拉取；
-2. 该项目有两个异步模块A和B刚好被归类到同一个`cacheGroup`内，不过模块A被标记为`externals`，所以产物chunk里面只有模块B，`contenthash`也是根据B计算的；
-3. 最近一次变更模块B新增了很多内容，超出了该`cacheGroup`的文件大小要求，现在该`cacheGroup`只有模块A，而模块A又是个`externals`依赖，于是寄了；
-4. 问题难以定位一来是因为该报错会打断Webpack构建，没有构建产物可以分析比对，而业务开发团队的行为一切正常；另外就是那个让人摸不着头脑的报错信息，Webpack对出错信息的处理掩盖了最初的错误堆栈，进一步增加了排查难度……
-5. 为了减少影响面，同时也观察到他们这个场景其实有很多巧合，我给出的修复方案是在该项目内对`splitChunks.cacheGroups`配置稍作修改，覆盖模板项目的默认配置，后面模板项目迭代的时候再将相应配置调整集成进去。
+1.  我们在`@vue/cli`配置的基础上，对Webpack的`splitChunks`配置及`externals`配置做了进一步修改，一些模块会被打包到同一个chunk里面去以减少网络请求数，还有些模块被设置为`externals`由App原生缓存预拉取；
+2.  该项目有两个异步模块A和B刚好被归类到同一个`cacheGroup`内，不过模块A被标记为`externals`，所以产物chunk里面只有模块B，`contenthash`也是根据B计算的；
+3.  最近一次变更模块B新增了很多内容，超出了该`cacheGroup`的文件大小要求，现在该`cacheGroup`只有模块A，而模块A又是个`externals`依赖，于是寄了；
+4.  问题难以定位一来是因为该报错会打断Webpack构建，没有构建产物可以分析比对，而业务开发团队的行为一切正常；另外就是那个让人摸不着头脑的报错信息，Webpack对出错信息的处理掩盖了最初的错误堆栈，进一步增加了排查难度……
+5.  为了减少影响面，同时也观察到他们这个场景其实有很多巧合，我给出的修复方案是在该项目内对`splitChunks.cacheGroups`配置稍作修改，覆盖模板项目的默认配置，后面模板项目迭代的时候再将相应配置调整集成进去。
 
 #### Webpack5
 
 Webpack4到Webpack5的变化并不是很大，做Migration也不麻烦，我觉得比较值得关注的变更有这几点：
 
-1. 内置了对常见图片、字体格式的支持，不再需要去配置`url-loader`和`file-loader`；
-2. 缓存算法、Tree Shaking算法的改进，尤其是对CJS包Tree Shaking的部分支持；
-3. Module Federation，独立构建，联合部署，站在更高的角度看待应用和组件，思路并不新鲜，甚至可以说有点老套。在微前端领域可能会有点作用。
+1.  内置了对常见图片、字体格式的支持，不再需要去配置`url-loader`和`file-loader`；
+2.  缓存算法、Tree Shaking算法的改进，尤其是对CJS包Tree Shaking的部分支持；
+3.  Module Federation，独立构建，联合部署，站在更高的角度看待应用和组件，思路并不新鲜，甚至可以说有点老套。在微前端领域可能会有点作用。
 
 坊间传闻某些场景Webpack5甚至比Webpack4还要慢，也不知道是不是真的。更重要的是同一时期Vite火起来了。
 
@@ -330,9 +327,9 @@ Webpack4到Webpack5的变化并不是很大，做Migration也不麻烦，我觉�
 
 “天下苦Webpack久矣”这话真不是开玩笑。Webpack成熟、稳定但也复杂、臃肿，如果项目庞大且磁盘性能不佳，冷启动一次动辄1分多种的耗时着实让人抓狂。Vite吸取了Webpack等构建工具的诸多教训，构建于Rollup之上，将“按需加载”的思想应用到开发服务器中，同时复用了Esbuild这类系统编程语言开发的编译构建工具，获得了相当大的性能改进以及与之适配的成功。对于常在前端工程化领域折腾的人来说，Vite还有一些顺应技术发展而生的特性，确实方便：
 
-1. 默认对TS配置文件的支持与配置变更后的自动重载，在Webpack时代我通常是借助[nodemon](https://www.npmjs.com/package/nodemon)之类的工具实现；
-2. 对SSR支持的重视，在我心里SSR是前端渲染技术发展的必由之路，相比之下在Webpack中实现SSR会麻烦一点；
-3. 核心功能围绕ESM模块而非是CJS模块展开，顺应ECMA标准与前端生态的发展。
+1.  默认对TS配置文件的支持与配置变更后的自动重载，在Webpack时代我通常是借助[nodemon](https://www.npmjs.com/package/nodemon)之类的工具实现；
+2.  对SSR支持的重视，在我心里SSR是前端渲染技术发展的必由之路，相比之下在Webpack中实现SSR会麻烦一点；
+3.  核心功能围绕ESM模块而非是CJS模块展开，顺应ECMA标准与前端生态的发展。
 
 不过，Vite的核心能力是它的开发服务器来，构建时也聚焦于构建前端应用，因此假如要行使构建工具的其他功能比如CJS Bundler，也就是通过Vite去使用其底层的Rollup或Esbuild的功能，还需要额外做一些配置，这种情况下可能还是直接使用Webpack、Rollup更好些。
 
@@ -388,11 +385,11 @@ TSC在前端工程化领域里主要被用于类型检查和生成类型文件�
 
 Git hooks可以在执行Git操作的时候执行各种自动化脚本，是前端工程的重要组成部分，这里介绍我熟悉的几个工具：
 
-1. [husky](https://github.com/typicode/husky)：在Git原生钩子的基础上做了简单的封装，使之更适合前端工程；
+1.  [husky](https://github.com/typicode/husky)：在Git原生钩子的基础上做了简单的封装，使之更适合前端工程；
 
-2. [lint-staged](https://github.com/okonet/lint-staged)：使用ESLint这些Lint工具的时候往往只希望对本次需求改动的内容进行检查，而不用对整个code base做检查，一者为了效率，而来也避免在Lint规则变动之后影响到以前已投产的代码。lint-staged顾名思义，可以让Lint工具只检查Git staged工作区的文件，通常与husky配合使用，在pre-commit阶段检查。
+2.  [lint-staged](https://github.com/okonet/lint-staged)：使用ESLint这些Lint工具的时候往往只希望对本次需求改动的内容进行检查，而不用对整个code base做检查，一者为了效率，而来也避免在Lint规则变动之后影响到以前已投产的代码。lint-staged顾名思义，可以让Lint工具只检查Git staged工作区的文件，通常与husky配合使用，在pre-commit阶段检查。
 
-3. [commitlint](https://github.com/conventional-changelog/commitlint)：与husky配合使用，用commit-msg钩子检查提交信息，让每一次提交的说明信息更规范可读，便于生成Changelog。
+3.  [commitlint](https://github.com/conventional-changelog/commitlint)：与husky配合使用，用commit-msg钩子检查提交信息，让每一次提交的说明信息更规范可读，便于生成Changelog。
 
 ### Standard Version
 
@@ -402,12 +399,12 @@ Git hooks可以在执行Git操作的时候执行各种自动化脚本，是前�
 
 不知道是不是该翻译成“无头浏览器”，听着怪惊悚的。指的是没有UI层、靠代码控制的浏览器内核，浏览器的其他功能基本都有。目前主流PC端浏览器都有无头版本，安卓也可以通过`adb`达成类似效果，iOS我不是很了解，其中比较出名的可能是Chrome的Puppeteer，我拿来做过一段时间的高级爬虫，爬取一些新闻和财经信息，用node-scheduler和go-mail定时发到我邮箱里，只不过我爬了也懒得看后来还嫌烦就废弃了。在前端工程化领域无头浏览器常用于测试与性能分析：
 
-1. e2e测试，有现成的框架Cypress和Playwright，都挺好用的；
-2. 页面性能分析，例如Google的Lighthouse，我有段时间致力于在Lighthouse上做个二次封装以便集成到我们的流水线上去，宏愿是自动分析前端应用性能并将生成的报告邮件到项目开发者，不过Lighthouse当时正处于变革期，从早期只能进行单个页面冷启动的性能分析往能够[根据用户操作追踪多页面生命周期的模式](https://github.com/GoogleChrome/lighthouse/blob/main/docs/user-flows.md)迁移，文档与代码均相当混乱，我捏着鼻子通过翻源码翻Issue做到生成报告这一步之后随着工作重心的迁移就搁置了；
-3. 协助生成应用文档，这是我的一个想法，还没有实施过。思路来源于SSG和预渲染，结合自己作为新人的经历和带新人的经历，我觉得如果能够将前端应用各个时期的页面都截图录下来并配以必要的文字信息，是非常良好的熟悉项目的方式。从事过项目交接就能体会到，过去的文档写得不管有多好，信息的丢失都是必然的，有时连人员都不一定能找到，想要复现过去的开发环境、测试数据乃至做出重构那真是战战兢兢如履薄冰。这时假如有无头浏览器，结合约定式路由，自动访问和操作各页面并生成对应截图乃至README，对后来者无疑是造福了，整个项目的变迁过程有迹可循，也更生动形象。
+1.  e2e测试，有现成的框架Cypress和Playwright，都挺好用的；
+2.  页面性能分析，例如Google的Lighthouse，我有段时间致力于在Lighthouse上做个二次封装以便集成到我们的流水线上去，宏愿是自动分析前端应用性能并将生成的报告邮件到项目开发者，不过Lighthouse当时正处于变革期，从早期只能进行单个页面冷启动的性能分析往能够[根据用户操作追踪多页面生命周期的模式](https://github.com/GoogleChrome/lighthouse/blob/main/docs/user-flows.md)迁移，文档与代码均相当混乱，我捏着鼻子通过翻源码翻Issue做到生成报告这一步之后随着工作重心的迁移就搁置了；
+3.  协助生成应用文档，这是我的一个想法，还没有实施过。思路来源于SSG和预渲染，结合自己作为新人的经历和带新人的经历，我觉得如果能够将前端应用各个时期的页面都截图录下来并配以必要的文字信息，是非常良好的熟悉项目的方式。从事过项目交接就能体会到，过去的文档写得不管有多好，信息的丢失都是必然的，有时连人员都不一定能找到，想要复现过去的开发环境、测试数据乃至做出重构那真是战战兢兢如履薄冰。这时假如有无头浏览器，结合约定式路由，自动访问和操作各页面并生成对应截图乃至README，对后来者无疑是造福了，整个项目的变迁过程有迹可循，也更生动形象。
 
 ## 加快应用构建
 
-1. 优化环境，应用构建是一个IO和CPU均密集的任务，优化磁盘性能，并发处理任务；
-2. 对于前端常用的构建工具如Webpack，考虑弃用一些JS编写的编译器转换器等，换用系统变成语言开发的工具，例如用Esbuild和SWC替换Babel；
-3. 做更多的构建缓存。
+1.  优化环境，应用构建是一个IO和CPU均密集的任务，优化磁盘性能，并发处理任务；
+2.  对于前端常用的构建工具如Webpack，考虑弃用一些JS编写的编译器转换器等，换用系统变成语言开发的工具，例如用Esbuild和SWC替换Babel；
+3.  做更多的构建缓存。

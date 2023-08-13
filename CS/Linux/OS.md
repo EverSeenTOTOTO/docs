@@ -4,9 +4,9 @@
 
 这三句话差不多就是我的理解：
 
-+ on a single computer, multiple processes can run
-+ within a single process, multiple threads can run
-+ within a single thread, multiple fibers can run
+*   on a single computer, multiple processes can run
+*   within a single process, multiple threads can run
+*   within a single thread, multiple fibers can run
 
 进程是操作系统提供的抽象，线程是进程思想在软件层面的套用，协程则是单线程模型下的多任务调度，本质是延续的思想。协程与前两者的区别在于不是抢占式而是合作式调度，两个协程不会同时执行，因此不用考虑临界区互斥问题。Coroutine和Fiber的区别在于，Fiber通常有一个调度器，一个Fiber阻塞（block）之后控制权返回给调度器，而对称式Coroutine挂起（yield）之后控制权转移到目标Coroutine、非对称式Coroutine转移到caller手中。
 
@@ -77,21 +77,17 @@ int main() {
 
 此时输出：
 
-```
-Starting main thread.
-Starting concurrent thread.
-Exiting concurrent thread.
-Destructing Demo
-Exiting main thread.
-```
+    Starting main thread.
+    Starting concurrent thread.
+    Exiting concurrent thread.
+    Destructing Demo
+    Exiting main thread.
 
 如果将`t.join()`改成`t.detach()`，大概率只得到输出，在主线程退出时子线程直接被“shutdown”了：
 
-```
-Starting main thread.
-Exiting main thread.
-Starting concurrent thread.
-```
+    Starting main thread.
+    Exiting main thread.
+    Starting concurrent thread.
 
 很多时候我们不想阻塞主线程（比如创建了很多线程，不太可能挨个`join`），又需要保证主线程退出时所有子线程都执行完成，没完成再等一下它们，这就是`future`和`promise`可以派上用场的地方：
 
@@ -118,13 +114,11 @@ int main() {
 
 将得到输出：
 
-```
-Starting main thread.
-Starting concurrent thread.
-Exiting main thread.
-Exiting concurrent thread.
-Destructing Demo
-```
+    Starting main thread.
+    Starting concurrent thread.
+    Exiting main thread.
+    Exiting concurrent thread.
+    Destructing Demo
 
 ## 文件系统
 
@@ -139,6 +133,5 @@ const fs = require('fs');
 
 fs.writeSync(process.stdout.fd, 'Hello World\n');
 ```
-
 
 ## 终端与TTY

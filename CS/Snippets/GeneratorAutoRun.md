@@ -72,7 +72,7 @@ end)
 
 ## Python版本
 
-```python 
+```python
 import time
 
 def setTimeout(callback, timeout):

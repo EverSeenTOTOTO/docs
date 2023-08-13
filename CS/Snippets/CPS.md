@@ -4,7 +4,7 @@
 (Warning: call-with-current-continuation is weird.)[^3]
 :::
 
-[^3]: <https://www.cs.utexas.edu/ftp/garbage/cs345/schintro-v14/schintro_75.html#SEC82>
+[^3]: https://www.cs.utexas.edu/ftp/garbage/cs345/schintro-v14/schintro_75.html#SEC82
 
 ## 理解延续
 
@@ -20,7 +20,7 @@
 
 这么说还是很抽象，让我们从实际代码出发来理解continuation：
 
-1. 下面这段代码会打印`1`和`2`，但是`3`不会打印：
+1.  下面这段代码会打印`1`和`2`，但是`3`不会打印：
 
     ```scheme
     (println 
@@ -32,7 +32,7 @@
 
     当`call/cc`被调用时，`cc`的值就是当前的延续（cc其实是current-continuation的简写），而当前的延续，也就是`call/cc`调用完程序将要做什么？是调用外围的那个`(println ?)`，这里的`?`部分，即后续执行的输入，则来自lambda函数里面的`(cc 2)`，所以是`2`。因此lambda函数执行时，首先执行`(println 1)`输出`1`，随后执行`(cc 2)`，直接跳到了未来执行外围`(println ?)`的时刻，跳过了`(println 3)`的执行，传递给当前延续`cc`的值是`2`，所以调用`(println 2)`输出`2`。
 
-2. 下面这段代码会无限循环打印`loop`：
+2.  下面这段代码会无限循环打印`loop`：
 
     ```scheme
     (define (cc) (call/cc (λ (cc) (cc cc))))
@@ -44,7 +44,7 @@
 
     第一行定义的函数`cc`是使用延续编写程序的一个常用技巧，由`(cc cc)`可知它将延续自己作为延续的参数来调用延续。因而我们有了一种捕获当前延续并且传递到`call/cc`外面去的方式。它甚至可以写得更简短~更有逼格~：
 
-    ```scheme 
+    ```scheme
     (define (cc) (call/cc (λ (cc) (call/cc cc))))
     (define (cc) (call/cc (λ (cc) (cc cc))))
     (define (cc) (call/cc (λ (cc) cc)))
@@ -62,7 +62,7 @@
 
     更进一步，拆解为：
 
-    ```scheme 
+    ```scheme
     (define loop (λ (start) 
                    (println "loop")
                    (start start)))
@@ -71,7 +71,7 @@
 
     和第一个例子类似，这里的`(cc)`会返回当前延续，而当前延续是什么？正是将要进行的调用`(loop 当前延续)`的行为。因此`loop`中的`start`参数就是当前延续，其延续的描述为“调用`loop`，参数是延续自己”。当`loop`中执行到`(start start)`时，这又是一种`(cc cc)`，于是再次将延续自己传递给延续并执行延续，周而复始。
 
-3. 下面这段代码常被用作延续调用改变执行流的示例：
+3.  下面这段代码常被用作延续调用改变执行流的示例：
 
     ```scheme
     (define foo #f)
@@ -85,7 +85,7 @@
 
     这段代码会输出两个`4`，而非是一个`4`和一个`5`。第一个`4`来自于`(+ 1 ?)`很好理解，在我们传给`call/cc`的函数内部，并没有调用`cc`，因此该函数返回的`3`作为了`call/cc`的返回值参与`+ 1`运算。但在`(foo (foo 3))`的执行中，内层的`(foo 3)`以参数`3`调用以前保存的延续`(+ 1 ?)`，会替换（丢弃）当前延续，转为执行`(+ 1 3)`，并将这个结果作为当前计算的结果，因此无论在外面套上多少层`foo`，最终都会被丢弃，故结果为`4`。
 
-4. 实现协程[^2]
+4.  实现协程[^2]
 
     [^2]: https://matt.might.net/articles/programming-with-continuations--exceptions-backtracking-search-threads-generators-coroutines/
 
@@ -93,15 +93,15 @@
 
     首先考虑`generator`里面应该是什么样子的，作为demo，我们遍历一个`range`，然后将每一个`i`都`yield`，直观的想法是这样：
 
-    ```scheme 
+    ```scheme
     (define gen (λ (yield)
                         (for ([i (in-range 1 4)])
                              (yield i))))
     ```
-    
+
     如果这时候我们调用`(gen println)`，它会打印1~3，但这不是我们想要的，我们期望`gen`是某种初始化函数，第一次调用之后，它返回一个可以被连续调用的函数，这个函数才是真正的`generator`。也就是说我们的调用方式大致像这样：
 
-    ```scheme 
+    ```scheme
     (define g (gen))
 
     (next g) ; 1
@@ -113,7 +113,7 @@
 
     为了实现这个目标，我们传入的`yield`应该是一个来自外部的延续，这样调用`yield i`会直接跳过后续的执行，并将程序控制权传到外界。但跳过了后续迭代又如何实现遍历呢？我们可以不仅仅是传递`i`，而同时将`gen`内部的“当前延续”也传递出去：
 
-    ```scheme 
+    ```scheme
     (define gen (λ (yield)
                    (for ([i (in-range 1 4)])
                         (call/cc (λ (cc)
@@ -122,10 +122,10 @@
 
     现在只要给`gen`传一个延续，就可以拿到`gen`里面的`i`和内部延续了：
 
-    ```scheme 
+    ```scheme
     (call/cc (λ (cc) (gen cc))) ; '(1 . #<procedure>)
     ```
-    
+
     下一步要做的就是从这个`pair`中提取内容并执行，下面的代码中`in-cc`指代`gen`内部循环体的延续，我们每次打印一个值，然后接着调用这个延续，最终输出1～3：
 
     ```scheme
@@ -139,9 +139,9 @@
 
     输出：
 
-        1
-        2
-        3
+         1
+         2
+         3
 
     `out-cc`和`in-cc`起到的作用可以被理解为“保存现场”，`out-cc`保存的是所在`let`下面那一段程序，`in-cc`保存的是`for/i`下一次迭代。通过两段延续的相互调用实现协作。理解了这些，要实现`next`单步执行就很简单了，只需要将`in-cc`作为全局变量并设个初值，在`next`函数里判断一下，如果`in-cc`是初值，则初始化，否则调用`in-cc`。这样我们把对`in-cc`的调用移到了`out-cc`的现场外面，就可以单步调用了。
 
@@ -174,9 +174,9 @@
 
     输出：
 
-        1
-        2
-        3
+         1
+         2
+         3
 
     如果要规避全局变量，并且让`gen`可复用，用高阶函数包装一下即可。
 
@@ -186,7 +186,7 @@
 
 以递归下降方法对`begin`表达式求值为例，在宿主语言里，我们可能会利用循环实现，类似这样：
 
-```ts 
+```ts
 function evalBegin(expr, env) {
   const beginEnv = new Env(env, 'begin');
 
@@ -250,7 +250,7 @@ function evalBegin(expr, env, cont) {
 
 延续调用就是不调用`c`的一个例子。我们只要设法区分一个函数调用是常规的函数调用还是延续调用，如果是常规函数调用，得到结果之后传给外面传进来的延续继续执行即可；如果是延续调用，那么它自己就是后续执行，因此它调用的结果就是整个表达式求值的结果，外面传进来的延续被忽略，通过这种方式实现了逃逸。用代码表达大致是：
 
-```ts 
+```ts
 function evalApply(expr, env, cont) {
   return evalExpr(expr.caller, env, (caller) => { // 解析函数
     return evalSeq( // 解析参数列表

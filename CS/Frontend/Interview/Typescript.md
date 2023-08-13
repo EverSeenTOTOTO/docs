@@ -2,7 +2,7 @@
 
 说实话大多数TS面试题我觉得没有问的必要，只要理解TS类型系统的图灵完备性，理解编译期和运行期的差异，多数问题都可以元编程解决。这些题目的阻碍往往是TS在工作实践中应用**较少**的一些技巧。现在假定你已经了解实现TS类型元编程的各种“素材”，如数字表示和基本运算，列表及列表操作等，网络上有很多教程，我也写过[一篇](https://www.everseenflash.com/CS/Snippets/Type%20Metaprogram.md)，下面选取[type-challenges](https://github.com/type-challenges/type-challenges)标记为“地狱”难度的两道题目为例说明这一点：
 
-1. [获取只读字段](https://github.com/type-challenges/type-challenges/blob/main/questions/00005-extreme-readonly-keys/README.zh-CN.md)
+1.  [获取只读字段](https://github.com/type-challenges/type-challenges/blob/main/questions/00005-extreme-readonly-keys/README.zh-CN.md)
 
     这题首先要知道TS修改属性修饰符例如只读`readonly`、可选`?`的方法，不然根本无从下手：
 
@@ -43,7 +43,7 @@
     export type is_same<T, U> = T extends U? (U extends T? true : false) : false;
     ```
 
-    但这个实现有缺陷，属性仅带有`readonly`标记并不会被认为是不同类型，归根结底因为TS类型系统是 _structural_ 而非 _nominal_ 的，类型只要结构相同就被认为相等，`{foo?: 42}`等价于`{} | {foo: 42}`，而`readonly`对类型的“形状”来说并无差别：
+    但这个实现有缺陷，属性仅带有`readonly`标记并不会被认为是不同类型，归根结底因为TS类型系统是 *structural* 而非 *nominal* 的，类型只要结构相同就被认为相等，`{foo?: 42}`等价于`{} | {foo: 42}`，而`readonly`对类型的“形状”来说并无差别：
 
     ```ts
     type foo = { foo: 42 }
@@ -55,9 +55,9 @@
 
     我们需要更严格的相等，怎么办，这时就该求助于[官方资源](https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650)了，当前TS版本4.9，以"Two conditional types"为关键字在[该文件](https://github.com/microsoft/TypeScript/blob/main/src/compiler/checker.ts)中搜索可以看到一些线索，TS在判断两个条件类型`T1 extends U1 ? X1 : Y1`和`T2 extends U2 ? X2 : Y2`是否相等的时候，依次进行如下判断：
 
-    1. 先检查`extends`右边的类型`extendsType`，对应`U1`和`U2`是否相同`isTypeIdenticalTo`；
-    2. 再检查`extends`左边的类型`checkType`，对应`T1`和`T2`，任意一个是否与另一个关联`isRelatedTo`；
-    3. 最后检查对应分支类型是否相互关联，即`X1`是否与`X2`、`Y1`是否与`Y2`关联。
+    1.  先检查`extends`右边的类型`extendsType`，对应`U1`和`U2`是否相同`isTypeIdenticalTo`；
+    2.  再检查`extends`左边的类型`checkType`，对应`T1`和`T2`，任意一个是否与另一个关联`isRelatedTo`；
+    3.  最后检查对应分支类型是否相互关联，即`X1`是否与`X2`、`Y1`是否与`Y2`关联。
 
     `isTypeIdenticalTo`涉及对内部类型标记的判断，这是此解法将`{a:1}&{b:2}`和`{a:1,b:2}`视为不相等的关键，也是我们得以区分`readonly`的关键。但TSC在处理条件类型时会先将其实例化（对条件类型求分支具体值）再作类型检查，因此需要设法让TSC惰性求值，也是下面`<P>() => P`的作用，构造一个Deferred Conditional Type，让TSC比对两个条件类型的数据结构而非推导出的具体分支值。
 
@@ -110,7 +110,7 @@
     type get_readonly_keys<Target> = helper<Target, union_to_tuple<keyof Target>, []>;
     ```
 
-2. [排序](https://github.com/type-challenges/type-challenges/blob/main/questions/00741-extreme-sort/README.md)
+2.  [排序](https://github.com/type-challenges/type-challenges/blob/main/questions/00741-extreme-sort/README.md)
 
     这题甚至还简单些，在已有类型列表的情况下，需要的只是在类型系统中比较大小的手段，因为所谓的数字均是类型而非运行时的值，且TS并不直接支持`type x = 1 > 2`这样的编译期计算。实现方法有很多，这里介绍我知道比较简单的一种，利用列表的`length`属性，将问题归约为我们熟知的列表操作：
 
@@ -345,7 +345,7 @@ let b: transform<foo> = a;
 
 TS中直接体现类型父子关系的无疑是Conditional Types，官方文档中值得留意的是这两句话：
 
-1. multiple candidates for the same type variable in co-variant positions causes a union type to be inferred（出现在协变位置上同一类型变量的多个候选将被推断为联合类型）：
+1.  multiple candidates for the same type variable in co-variant positions causes a union type to be inferred（出现在协变位置上同一类型变量的多个候选将被推断为联合类型）：
 
     ```ts
     type f1 = () => foo;
@@ -362,7 +362,7 @@ TS中直接体现类型父子关系的无疑是Conditional Types，官方文档�
     type x = transform<string, number>; // string | number
     ```
 
-2. multiple candidates for the same type variable in contra-variant positions causes an intersection type to be inferred（出现在逆变位置上同一类型变量的多个候选将被推断为交叉类型）：
+2.  multiple candidates for the same type variable in contra-variant positions causes an intersection type to be inferred（出现在逆变位置上同一类型变量的多个候选将被推断为交叉类型）：
 
     ```ts
     type f1 = (_: foo) => void;

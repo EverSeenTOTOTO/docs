@@ -10,6 +10,6 @@
 
     <img src="./bridge-3.webp" style="width: 800px" />
 
-3. 二七长江大桥
+3.  二七长江大桥
 
-    <img src="./27.webp" style="width: 800px" />
+     <img src="./27.webp" style="width: 800px" />

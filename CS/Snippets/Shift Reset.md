@@ -2,9 +2,9 @@
 
 如果不指定捕获的边界，`call/cc`捕获的延续称为Undelimited Continuation，[CPS](./CPS.md)一文的第三个例子其实揭示了Undelimited Continuation的一些缺陷[^link]。
 
-[^link]: <https://okmij.org/ftp/continuations/against-callcc.html>
+[^link]: https://okmij.org/ftp/continuations/against-callcc.html
 
-```scheme 
+```scheme
 (define k null)
 
 (+ 1 (call/cc (lambda (cc)
@@ -18,7 +18,7 @@
 
 Racket确实有这样的机制，叫做`call-with-composable-continuation`，别名`call/comp`，顾名思义，它捕获的延续可以进行组合。
 
-```scheme 
+```scheme
 (define k null)
 
 (+ 1 (call/comp (lambda (cc)
@@ -34,7 +34,7 @@ Racket确实有这样的机制，叫做`call-with-composable-continuation`，别
 
 这种带有标记的Delimited Continuation也称为Prompt。要实现上述目标，需借助`call-with-continuation-prompt`，别名`call/prompt`。它接受两个重要参数，第一个参数代表被边界包裹的计算，第二个参数代表要打的标记，`call/prompt`会将标记用作此处的定界。而`call/comp`和`call/cc`其实可以接受一个额外的参数，类型是一个帧定界符，作用是使它们捕获的当前延续只到被标记的最近一个Prompt为止。在下面的例子中，`make-continuation-prompt-tag`创建一个标记，我们把`capture-barrier`放置在`(- 1 (+ 1 ...))`之间，从而`call/comp`捕获的延续只到`(+ 1 ?)`为止。
 
-```scheme 
+```scheme
 (define (capture-barrier body)
   (let ([tag (make-continuation-prompt-tag)])
     (call/prompt 
@@ -128,7 +128,7 @@ Racket确实有这样的机制，叫做`call-with-composable-continuation`，别
 ; where E has no prompt
 ```
 
-```scheme 
+```scheme
 (reset val) => val
 (reset E[(shift k expr)]) => (reset ((lambda (k) expr)
                                      (lambda (v) (reset E[v]))))

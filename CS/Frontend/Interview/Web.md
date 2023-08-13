@@ -49,44 +49,42 @@ setTimeout(() => {
 
 下面这段来自NodeJS[官方文档](https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/)，不过这篇文章挺毒的，很多地方没说清楚：
 
-```
-   ┌───────────────────────┐
-┌─>│        timers         │
-│  └──────────┬────────────┘
-│  ┌──────────┴────────────┐
-│  │   pending callbacks   │
-│  └──────────┬────────────┘
-│  ┌──────────┴────────────┐
-│  │     idle, prepare     │
-│  └──────────┬────────────┘      ┌───────────────┐
-│  ┌──────────┴────────────┐      │   incoming:   │
-│  │         poll          │<─────┤  connections, │
-│  └──────────┬────────────┘      │   data, etc.  │
-│  ┌──────────┴────────────┐      └───────────────┘
-│  │        check          │
-│  └──────────┬────────────┘
-│  ┌──────────┴────────────┐
-└──┤    close callbacks    │
-   └───────────────────────┘
-```
+       ┌───────────────────────┐
+    ┌─>│        timers         │
+    │  └──────────┬────────────┘
+    │  ┌──────────┴────────────┐
+    │  │   pending callbacks   │
+    │  └──────────┬────────────┘
+    │  ┌──────────┴────────────┐
+    │  │     idle, prepare     │
+    │  └──────────┬────────────┘      ┌───────────────┐
+    │  ┌──────────┴────────────┐      │   incoming:   │
+    │  │         poll          │<─────┤  connections, │
+    │  └──────────┬────────────┘      │   data, etc.  │
+    │  ┌──────────┴────────────┐      └───────────────┘
+    │  │        check          │
+    │  └──────────┬────────────┘
+    │  ┌──────────┴────────────┐
+    └──┤    close callbacks    │
+       └───────────────────────┘
 
 事件循环自NodeJS启动后就开始，运行在主线程中，如果没有待执行的回调主线程就会退出。每轮循环有图中几个阶段（Phase，每个方框代表一个阶段），每个阶段都有一个FIFO队列存放待处理的回调。
 
-+ timers: 已到期的`setTimeout`、`setInterval`回调在这里执行；
-+ pending callbacks: 系统调用的结果回调，例如试图上报TCP错误`ECONNREFUSED`的行为；
-+ idle, prepare: 说是NodeJS内部使用；
-+ poll: 取回新的I/O事件，处理除了`close`、timer和`setImmediate`回调之外几乎所有的I/O回调；
-+ check: `setImmediate`回调在这里执行；
-+ close callbacks: `close`事件有关的回调，例如`socket.on('close', callback)`。
+*   timers: 已到期的`setTimeout`、`setInterval`回调在这里执行；
+*   pending callbacks: 系统调用的结果回调，例如试图上报TCP错误`ECONNREFUSED`的行为；
+*   idle, prepare: 说是NodeJS内部使用；
+*   poll: 取回新的I/O事件，处理除了`close`、timer和`setImmediate`回调之外几乎所有的I/O回调；
+*   check: `setImmediate`回调在这里执行；
+*   close callbacks: `close`事件有关的回调，例如`socket.on('close', callback)`。
 
 其中最核心的阶段是poll，如果进入poll阶段时poll队列为空，或者poll队列执行到为空，都会在此处等待：
 
-1. 若有`setImmediate`回调则进入check；
-2. 若没有`setImmediate`回调则会在此处一直等待，随后可能发生的情况是：计时器到期，则有回调进入timers队列，于是“折返”到timers阶段进行新一轮循环。
+1.  若有`setImmediate`回调则进入check；
+2.  若没有`setImmediate`回调则会在此处一直等待，随后可能发生的情况是：计时器到期，则有回调进入timers队列，于是“折返”到timers阶段进行新一轮循环。
 
 通过一些例子加深理解：
 
-1. 下面这段代码中，`setImmediate`始终在`setTimeout`前面执行：
+1.  下面这段代码中，`setImmediate`始终在`setTimeout`前面执行：
 
     ```js
     fs.readFile('some file', () => {
@@ -97,7 +95,7 @@ setTimeout(() => {
 
     `readFile`的回调在poll阶段执行，随后poll队列为空，但是回调执行过程中调用了`setImmediate`，check队列不为空，于是进入check阶段，下一轮再执行`setTimeout`的回调。
 
-2. 如果去掉外侧的`readFile`则不一定了，下面代码`setTimeout`有可能在`setImmediate`前面执行：
+2.  如果去掉外侧的`readFile`则不一定了，下面代码`setTimeout`有可能在`setImmediate`前面执行：
 
     ```js
     setTimeout(() => console.log('setTimeout'));
@@ -106,7 +104,7 @@ setTimeout(() => {
 
     `setTimeout`默认的等待间隔为1ms，主线程执行后，开始事件循环进入timers阶段时，如果还没到1ms，则timers队列为空，依次进入下面的阶段，先执行`setImmediate`回调，反之先执行`setTimeout`的回调。
 
-3. 下面这个例子说明了`setTimeout`设定的等待间隔并不可靠，NodeJS只保证到时间后timer回调被”尽快“地执行：
+3.  下面这个例子说明了`setTimeout`设定的等待间隔并不可靠，NodeJS只保证到时间后timer回调被”尽快“地执行：
 
     ```js
     const scheduledTime = performance.now();
@@ -145,9 +143,9 @@ process.nextTick(() => console.log('2'));
 
 我没有实现过相关功能，资料来源于[网络](https://juejin.cn/post/7142633594882621454)。
 
-1. `cloneNode` + `position`：克隆高亮部分，通过位置设置使其与原有结点重合；
-2. `z-index` + `position`：通过控制`z-index`的值，让高亮部分处于蒙层之上；
-3. SVG蒙版：太强了这个，看来得好好深入一下SVG这个东西。
+1.  `cloneNode` + `position`：克隆高亮部分，通过位置设置使其与原有结点重合；
+2.  `z-index` + `position`：通过控制`z-index`的值，让高亮部分处于蒙层之上；
+3.  SVG蒙版：太强了这个，看来得好好深入一下SVG这个东西。
 
 ## hash和history路由
 
@@ -233,11 +231,11 @@ export class HistoryRouter extends BaseRouter {
 
 很多时候需要绕过这些限制，不同的问题解决方案也不同：
 
-1. Cookie：对于一级域名相同，二级域名不同的网页，可以通过手动设置`document.domain`的方式共享Cookie；另一种方法是服务器在设置Cookie的时候指定Cookie所属的域名；
+1.  Cookie：对于一级域名相同，二级域名不同的网页，可以通过手动设置`document.domain`的方式共享Cookie；另一种方法是服务器在设置Cookie的时候指定Cookie所属的域名；
 
-2. iframe（囊括了localStorage/IndexDB）：存在一些技巧性的方法，但系统的解决还是推荐`window.postMessage`。
+2.  iframe（囊括了localStorage/IndexDB）：存在一些技巧性的方法，但系统的解决还是推荐`window.postMessage`。
 
-3. AJAX请求可以使用JSONP，核心思想是利用script请求可以跨域的特性，但古老且限制太多，例如只能使用GET等，一般采用下面会介绍的CORS方法。
+3.  AJAX请求可以使用JSONP，核心思想是利用script请求可以跨域的特性，但古老且限制太多，例如只能使用GET等，一般采用下面会介绍的CORS方法。
 
 ### CORS
 
@@ -299,30 +297,30 @@ CSRF即“我成替身了”，不法分子通过社工等手段窃取用户的�
 
 ## HTTP缓存
 
-1. Expires：使用确定的时间而非通过指定经过的时间来确定缓存的生命周期。由于时间格式难以解析，以及客户端服务端的时钟差异，目前更多的是使用`Cache-Control`的`max-age`来指定经过的时间。
+1.  Expires：使用确定的时间而非通过指定经过的时间来确定缓存的生命周期。由于时间格式难以解析，以及客户端服务端的时钟差异，目前更多的是使用`Cache-Control`的`max-age`来指定经过的时间。
 
-2. Cache-Control
+2.  Cache-Control
 
-    1. `max-age`：以秒为单位，代表缓存在什么时间后会失效，从服务端创建报文算起；
-    2. `no-store`：不要将响应缓存在任何存储中；
-    3. `no-cache`：允许缓存，但无论缓存过期与否，使用缓存前必须去服务端验证，一般会配合ETag和Last-Modified使用：如果请求的资源已更新，客户端将收到`200 OK`响应，否则，服务端应返回`304 Not Modified`；
-    4. `must-revalidate`：允许缓存，在缓存过期的情况下必须去服务端验证，看看服务端资源是否有变化，因此一般与`max-age`配合使用；
-    5. `public`：响应可以被任何缓存区缓存，包括共享缓存区；
-    6. `private`：缓存内容不可与其他用户共享，一般用于有cookie的个性化场景；
-    7. `immutable`：资源不会变，无需验证；
-    8. `proxy-revalidate`：过时的控制代理缓存的技术。
+    1.  `max-age`：以秒为单位，代表缓存在什么时间后会失效，从服务端创建报文算起；
+    2.  `no-store`：不要将响应缓存在任何存储中；
+    3.  `no-cache`：允许缓存，但无论缓存过期与否，使用缓存前必须去服务端验证，一般会配合ETag和Last-Modified使用：如果请求的资源已更新，客户端将收到`200 OK`响应，否则，服务端应返回`304 Not Modified`；
+    4.  `must-revalidate`：允许缓存，在缓存过期的情况下必须去服务端验证，看看服务端资源是否有变化，因此一般与`max-age`配合使用；
+    5.  `public`：响应可以被任何缓存区缓存，包括共享缓存区；
+    6.  `private`：缓存内容不可与其他用户共享，一般用于有cookie的个性化场景；
+    7.  `immutable`：资源不会变，无需验证；
+    8.  `proxy-revalidate`：过时的控制代理缓存的技术。
 
-3. If-Modified-Since
+3.  If-Modified-Since
 
     客户端缓存过期了也未必就要立即丢弃，很可能服务端资源没变，这时可以简单刷新下客户端缓存的生命周期而不必重新传输数据，即所谓的“重新验证（revalidate）”。具体实现方式是在请求时带上`If-Modified-Since`及之前缓存下来的`Last-Modified`时间，服务端将返回200或304指示是否需要刷新。
 
     由于`If-Modified-Since`和`Last-Modified`都是时间戳格式，与Expires存在类似问题，因此有`ETag/If-None-Match`方案。
 
-4. ETag/If-None-Match
+4.  ETag/If-None-Match
 
     ETag是服务端生成的任意值，通常是文件Hash或者版本号等。客户端缓存过期时，请求会带上`If-None-Match`及缓存的`ETag`值去询问服务端是否改变了，如果服务端为该资源确定的最新`ETag`与客户端发来的一致，说明无需重新发送资源，应返回`304`，客户端刷新缓存生命周期并复用即可。
 
-5. Vary：区分响应的基本方式是利用它们的URL，但有些情况下同一个URL的响应也可能不同，例如根据`Accept-Language`返回了不同的语言版本，这时可利用`Vary`指明额外用于区分响应的字段。
+5.  Vary：区分响应的基本方式是利用它们的URL，但有些情况下同一个URL的响应也可能不同，例如根据`Accept-Language`返回了不同的语言版本，这时可利用`Vary`指明额外用于区分响应的字段。
 
 ## 移动端H5与原生的交互
 

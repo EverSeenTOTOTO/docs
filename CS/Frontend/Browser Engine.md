@@ -2,11 +2,11 @@
 
 最近看了一些关于浏览器实现的知识，资料主要来源于火狐一个实验性项目servo的[Wiki](https://github.com/servo/servo/wiki)。另有这几篇文章推荐：
 
-+ <http://taligarsiel.com/Projects/howbrowserswork1.htm>
+*   <http://taligarsiel.com/Projects/howbrowserswork1.htm>
 
-+ <https://wpewebkit.org/blog/03-wpe-graphics-architecture.html>
+*   <https://wpewebkit.org/blog/03-wpe-graphics-architecture.html>
 
-+ <https://www.cmyr.net/blog/gui-framework-ingredients.html#painting>
+*   <https://www.cmyr.net/blog/gui-framework-ingredients.html#painting>
 
 ## DOM Tree
 
@@ -89,9 +89,9 @@ Render Tree和DOM Tree对应但不完全相等，不可见元素等不会被插�
 
 样式计算的难点：
 
-1. 出于内存的考虑，不可能保存每个元素的所有样式属性数据；
-2. CSS选择器的匹配性能；
-3. 按照正确的级联顺序应用CSS规则也很复杂。
+1.  出于内存的考虑，不可能保存每个元素的所有样式属性数据；
+2.  CSS选择器的匹配性能；
+3.  按照正确的级联顺序应用CSS规则也很复杂。
 
 Firefox的Rule Tree和Style Context Tree：
 
@@ -122,24 +122,24 @@ Webkit的做法：按照规则优先级遍历四遍，后来居上。
 
 布局可能是全局的，当：
 
-1. 全局样式属性变化，例如`font-size`；
+1.  全局样式属性变化，例如`font-size`；
 
-2. 窗口大小变化。
+2.  窗口大小变化。
 
 也可以是局部的，只有带“dirty bit”的RenderObject会被处理，称之为“增量式布局”。这种布局是异步的。
 
 ### 布局过程
 
-1. Parent renderer determines its own width.
+1.  Parent renderer determines its own width.
 
-2. Parent goes over children and:
+2.  Parent goes over children and:
 
-    1. Place the child renderer (sets its x and y).
-    2. Calls child layout if needed(they are dirty or we are in a global layout or some other reason) - this calculates the child's height.
+    1.  Place the child renderer (sets its x and y).
+    2.  Calls child layout if needed(they are dirty or we are in a global layout or some other reason) - this calculates the child's height.
 
-3. Parent uses children accumulative heights and the heights of the margins and paddings to set it own height - this will be used by the parent renderer's parent.
+3.  Parent uses children accumulative heights and the heights of the margins and paddings to set it own height - this will be used by the parent renderer's parent.
 
-4. Sets its dirty bit to false.
+4.  Sets its dirty bit to false.
 
 宽度计算时遇到换行：传播给上级，上级会新建RenderObject。
 
@@ -163,13 +163,13 @@ Webkit的RenderLayer树：看成是Render Tree的合并，处于同一层级的R
 
 即什么时候回流什么时候重绘：
 
-1. Changes to an elements color will cause only repaint of the element. 
+1.  Changes to an elements color will cause only repaint of the element.
 
-2. Changes to the element position will cause layout and repaint of the element, its children and possibly siblings. 
+2.  Changes to the element position will cause layout and repaint of the element, its children and possibly siblings.
 
-3. Adding a DOM node will cause layout and repaint of the node. 
+3.  Adding a DOM node will cause layout and repaint of the node.
 
-4. Major changes, like increasing font size of the "html" element, will cause invalidation of caches, relayout and repaint of the entire tree.
+4.  Major changes, like increasing font size of the "html" element, will cause invalidation of caches, relayout and repaint of the entire tree.
 
 ## 主流浏览器信息
 
@@ -181,4 +181,3 @@ Webkit的RenderLayer树：看成是Render Tree的合并，处于同一层级的R
 | Android WebView | | |
 | WKWebView | | |
 | Microsoft Edge Webview2 | | |
-

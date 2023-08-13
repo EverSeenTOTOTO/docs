@@ -46,7 +46,7 @@ console.log(Object.getPrototypeOf(Derived.prototype) == Base.prototype); // true
 
 首先每个实例的`__proto__`都等于基类的`prototype`：
 
-```js 
+```js
 console.log(Object.getPrototypeOf(foo) === Base.prototype); // true
 console.log(Object.getPrototypeOf(bar) === Derived.prototype); // true
 console.log(Object.getPrototypeOf(baz) === Derived2.prototype); // true
@@ -54,7 +54,7 @@ console.log(Object.getPrototypeOf(baz) === Derived2.prototype); // true
 
 其次想到函数的原型一层层往上找最终应该（！）是`Function.prototype`，同理对象的原型层层往上应得到`Object.prototype`，上文出现的基类本质是函数，而实例是创建出来的对象，因此应该有：
 
-```js 
+```js
 function getTopLevelPrototypeOf(target) {
   let proto = target;
 
@@ -80,7 +80,7 @@ console.log(getTopLevelPrototypeOf(baz) === Object.prototype); // true
 
 这三个`false`有点出乎意料，仔细一想就能明白，`Function.prototype`是一个对象，因此它还有上一层指向`Object.prototype`，而`Object.getPrototypeOf(Object.prototype)`就是货真价实的`null`了：
 
-```js 
+```js
 console.log(Object.getPrototypeOf(Base) === Function.prototype); // true
 console.log(Object.getPrototypeOf(Function.prototype) === Object.prototype); // true
 console.log(Object.getPrototypeOf(Object.prototype) === null); // true
@@ -88,7 +88,7 @@ console.log(Object.getPrototypeOf(Object.prototype) === null); // true
 
 写这篇博客的起因是遇到了一个BUG，在试图修改并重用对象的`__proto__`时，不小心污染了`Function.prototype`。因此有这种需求的话要注意两点，一要避免丢失原型上本来有的东西，二要避免污染全局空间：
 
-```js 
+```js
 // Base.__proto__不再是Function.prototype，意味着来自Function.prototype的bind、apply等方法都丢失了
 Object.setPrototypeOf(Base, { x: 2 });
 
@@ -98,7 +98,7 @@ Object.assign(Object.getPrototypeOf(Base), { x: 2 });
 
 一种解决方法是先将对象的`__proto__`克隆一份，在克隆出来的原型上进行修改，最后再重设为对象的原型：
 
-```js 
+```js
 const proto = Object.getPrototypeOf(Base);
 const newProto = Object.assign(Object.create(proto), { x: 2 });
 
@@ -107,7 +107,7 @@ Object.setPrototypeOf(Base, newProto);
 
 这里使用`Object.create`也是必要的，因为常见的对象拷贝的方法不会拷贝诸如`Function.prototype`上的`bind`等固有属性（可以使用`Object.getOwnPropertyNames`查看固有属性）：
 
-```js 
+```js
 p = Object.getPrototypeOf(Base);
 x = {...p};
 y = Object.assign(Object.create(null), p);

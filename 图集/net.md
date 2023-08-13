@@ -4,6 +4,6 @@
 
     <img src="./BertrandsLife.webp" style="width: 400px">
 
-2. 该同学刚入职时还在说好话，一个星期后的转变让人捧腹。
+2.  该同学刚入职时还在说好话，一个星期后的转变让人捧腹。
 
-    <img src="./PUA.webp" style="width:400px"/>
+     <img src="./PUA.webp" style="width:400px"/>

@@ -25,8 +25,8 @@ fn cpu(ctx: Context) {
 
 触发时机：
 
-1. 用户进程主动休眠，在`sleep`中会调用`sched`，在`wait`中也会调用`sleep`
-2. 借助周期性的时钟中断，检查长时间运行的进程，在`usertrap`中会调用`yield`，`yield`调用`sched`
+1.  用户进程主动休眠，在`sleep`中会调用`sched`，在`wait`中也会调用`sleep`
+2.  借助周期性的时钟中断，检查长时间运行的进程，在`usertrap`中会调用`yield`，`yield`调用`sched`
 
 疑问：RISC-V的寄存器中不包括PC，在`context`的定义和`switch`的实现中也没有PC的身影，PC是怎么被保存的？
 
@@ -34,18 +34,17 @@ It does not save the program counter. Instead, `swtch` saves the *ra*  register,
 
 When `swtch` returns, it returns to the instructions pointed to by the restored *ra* register, that is, the instruction from which the new thread previously called `swtch`.
 
-RISC-V中*ra*是caller保存的寄存器，所以在调用`switch`时*ra*已经被设置为调用`switch`处下一条指令的地址，调用`switch`会改变*ra*，但这对CPU来说是透明的，CPU只会机械地返回到*ra*所指向的位置，从而实现了切换。原理和初始化进程时将*ra*修改为`main`以“返回”到`main`开始执行进程、和进程从系统调用中返回是一样的。 
+RISC-V中*ra*是caller保存的寄存器，所以在调用`switch`时*ra*已经被设置为调用`switch`处下一条指令的地址，调用`switch`会改变*ra*，但这对CPU来说是透明的，CPU只会机械地返回到*ra*所指向的位置，从而实现了切换。原理和初始化进程时将*ra*修改为`main`以“返回”到`main`开始执行进程、和进程从系统调用中返回是一样的。
 
 疑问：时钟中断到来的时候，在执行的是用户进程A，操作系统没有在执行，谁中止了用户程序并保存的现场？
 
 和系统调用一样，也是由硬件隐式地保存寄存器(A)到内核栈(A)，保存完之后才跳转到内核的陷阱处理程序。如果是进程间切换，在陷阱处理程序中还会发生第二种寄存器保存/恢复，由内核显式地保存寄存器(A)到PCB(A)，并恢复PCB(B)到寄存器(B)，这使得原本由A陷入的内核看起来好像是从B陷入的一样，再返回将返回到B进程。
 
-
 ## 递归锁的坏处
 
 会让程序分析变得更加困难。在这个例子中，如果锁可重入，由于`h()`可能也调用`call_once()`，因此不能保证`call_once()`只被调用一次：
 
-```c 
+```c
 struct spinlock lock;
 int data = 0; // protected by lock
 
@@ -92,7 +91,7 @@ while the lock is held.
 
 出于上述原因，实现`sleeplock`的首要问题就是要让持有锁的进程在被调度出CPU的时候让出锁。可以用`spinlock`来实现`sleeplock`，`sleeplock`的`lk`字段用于保护`locked`字段：
 
-```c 
+```c
 // Long-term locks for processes
 struct sleeplock {
   uint locked;       // Is the lock held?
@@ -104,7 +103,7 @@ struct sleeplock {
 };
 ```
 
-```c 
+```c
 void acquiresleep(struct sleeplock *lk) {
   acquire(&lk->lk);
   while (lk->locked) {
@@ -118,7 +117,7 @@ void acquiresleep(struct sleeplock *lk) {
 
 在`sleep`里面，让出锁`lk`并进行进程间调度，`p->lock`是保护进程状态字段的锁，不要和`lk`混淆了：
 
-```c 
+```c
 void sleep(void *chan, struct spinlock *lk) {
   struct proc *p = myproc();
   
@@ -149,7 +148,7 @@ void sleep(void *chan, struct spinlock *lk) {
 
 有`sleep`就有`wakeup`，`wakeup`在`releasesleep`中被调用，进程`sleep`的时候`p->chan = chan`保存了一个标志位来表示当前进程正在等待某个锁，因此在`wakeup`中，在进程列表中找一找哪些进程持有这个标志位就可以唤醒了：
 
-```c 
+```c
 void releasesleep(struct sleeplock *lk) {
   acquire(&lk->lk);
   lk->locked = 0;
@@ -182,7 +181,7 @@ void wakeup(void *chan) {
 | File descriptor | The file descriptor layer abstracts many Unix resources using the file system interface, simplifying the lives of application programmers. |
 | Pathname | The pathname layer provides hierarchical path names like `/usr/rtm/xv6/fs.c`, and resolves them with recursive lookup. |
 | Directory | The directory layer implements each directory as a special kind of inode whose content is a sequence of directory entries, each of which contains a file’s name and i-number. |
-| Inode | The inode layer provides individual files, each represented as an inode with a unique i-number and some blocks holding the file’s data. | 
+| Inode | The inode layer provides individual files, each represented as an inode with a unique i-number and some blocks holding the file’s data. |
 | Logging | The logging layer allows higher layers to wrap updates to several blocks in a transaction, and ensures that the blocks are updated atomically in the face of crashes. |
 | Buffer cache | The buffer cache layer caches disk blocks and synchronizes access to them, making sure that only one kernel process at a time can modify the data stored in any particular block. |
 | Disk | The disk layer reads and writes blocks on an virtio hard drive. |
@@ -209,17 +208,17 @@ void wakeup(void *chan) {
 
 ## 虚拟机的三种实现机制
 
-1. 软件模拟，编写一个能够执行机器指令的模拟器：切实可行，完全控制，但是慢；
+1.  软件模拟，编写一个能够执行机器指令的模拟器：切实可行，完全控制，但是慢；
 
-2. 在真实CPU上执行guest instructions：如果要执行特权指令怎么办？产生trap，可以用软件包装并捕获，自定义trap handler，称为“trap-and-emulate”；
+2.  在真实CPU上执行guest instructions：如果要执行特权指令怎么办？产生trap，可以用软件包装并捕获，自定义trap handler，称为“trap-and-emulate”；
 
-3. 硬件支持的虚拟化：VT-x/VMX/SVM：比“trap-and-emulate”还要快，软件实现简单，被广泛用于虚拟机实现。
+3.  硬件支持的虚拟化：VT-x/VMX/SVM：比“trap-and-emulate”还要快，软件实现简单，被广泛用于虚拟机实现。
 
 ## 读锁在多核缓存上表现不佳
 
 常见的一种读写锁实现，允许并行读，互斥写：
 
-```c 
+```c
 struct rwlock { int n; };
   n=0  -> not locked
   n=-1 -> locked by one writer

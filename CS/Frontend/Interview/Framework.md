@@ -16,10 +16,10 @@
 
 作为示例，我们设计一套极简的VDOM，只有几个结点类型：
 
-1. `fragment`，类似React中的`<></>`，用于组织元素；
-2. `div`，作用和HTML的块级元素类似；
-3. `text`，代表纯文本；
-4. `button`，用于演示用户操作。支持的HTML属性也非常有限，只有少数`style`属性和`onclick`事件。
+1.  `fragment`，类似React中的`<></>`，用于组织元素；
+2.  `div`，作用和HTML的块级元素类似；
+3.  `text`，代表纯文本；
+4.  `button`，用于演示用户操作。支持的HTML属性也非常有限，只有少数`style`属性和`onclick`事件。
 
 ### 求值器
 
@@ -71,7 +71,6 @@ export function evalButton(node: ts.VNodeButton): HTMLButtonElement {
 }
 ```
 
-
 这样我们的框架后端（指编译器后端，在这里是VDOM求值器）就初步可用了，下面是一个简单的用例：
 
 ```html
@@ -113,15 +112,15 @@ export function evalButton(node: ts.VNodeButton): HTMLButtonElement {
 
 如前文所述，既然求值可行，那我们把同一套VDOM翻译成渲染指令（类比汇编代码）保存下来应该也是可行的。为此我们先设计几个简单的虚拟渲染指令：
 
-1. `moveTo x, y`: 移动指针到坐标`(x, y)`处；
-2. `fillStyle style`: 改变填充色；
-3. `strokeStyle style`: 改变描边色；
-4. `fontStyle family, size`: 改变字体样式；
-5. `fillRect x, y, w, h`: 填充矩形，左上角位置`(x, y)`，宽高为`(w, h)`；
-6. `strokeRect x, y, w, h`: 描边矩形，左上角位置`(x, y)`，宽高为`(w, h)`；
-7. `fillText text, x, y, maxw`: 在`(x, y)`处绘制文本，最大宽度`maxw`；
-8. `reset`: 重置笔刷状态为默认值，重置指针到`(0, 0)`；
-9. `save`: 保存笔刷状态（将颜色、字体大小等入栈）；
+1.  `moveTo x, y`: 移动指针到坐标`(x, y)`处；
+2.  `fillStyle style`: 改变填充色；
+3.  `strokeStyle style`: 改变描边色；
+4.  `fontStyle family, size`: 改变字体样式；
+5.  `fillRect x, y, w, h`: 填充矩形，左上角位置`(x, y)`，宽高为`(w, h)`；
+6.  `strokeRect x, y, w, h`: 描边矩形，左上角位置`(x, y)`，宽高为`(w, h)`；
+7.  `fillText text, x, y, maxw`: 在`(x, y)`处绘制文本，最大宽度`maxw`；
+8.  `reset`: 重置笔刷状态为默认值，重置指针到`(0, 0)`；
+9.  `save`: 保存笔刷状态（将颜色、字体大小等入栈）；
 10. `restore`: 恢复笔刷状态（设置笔刷为栈顶状态，退栈）。
 
 指令接口示例：
@@ -372,19 +371,19 @@ function doChangeStyle(action: ActionChangeStyle) {
 
 接着设计一套很Naive的Diff Patch算法，更多Diff Patch算法介绍见[这里](./DataStructure-Algorithm.md#H7465038581ab4d99)：
 
-1. 假设旧VDOM结点为S，关联的真实DOM结点为R，新VDOM结点为T，比对它们的`tag`名称；
-2. 如果S和T的`tag`不同：
-    1. 删除R；
-    2. 编译T，将得到的DOM结点插入到R原先所在位置；
-3. 如果S和T的`tag`相同：
-    1. 若S和T的`tag`名称为`text`，比对两者的文本内容，若有变化，修改R的文本内容为T的，跳转至步骤 iv；
-    2. 比对S和T的`children`，即找出哪些结点需要新增，哪些结点需要删除，哪些结点`tag`没变只是索引变化：
-        1. 对每个没变的子结点，假设在S和T中分别以N1和N2存在，对N1和N2重复调用此算法；
-        2. 对每个待删除的子结点，从R中删除相关联的DOM结点；
-        3. 对每个待新增的子结点，编译并将得到的DOM结点插入到R中；
-    3. 比对S和T的`attr`，若有变化，修改R的属性为T的；
-    4. 将R和T关联；
-4. 以后将T作为新的S使用。
+1.  假设旧VDOM结点为S，关联的真实DOM结点为R，新VDOM结点为T，比对它们的`tag`名称；
+2.  如果S和T的`tag`不同：
+    1.  删除R；
+    2.  编译T，将得到的DOM结点插入到R原先所在位置；
+3.  如果S和T的`tag`相同：
+    1.  若S和T的`tag`名称为`text`，比对两者的文本内容，若有变化，修改R的文本内容为T的，跳转至步骤 iv；
+    2.  比对S和T的`children`，即找出哪些结点需要新增，哪些结点需要删除，哪些结点`tag`没变只是索引变化：
+        1.  对每个没变的子结点，假设在S和T中分别以N1和N2存在，对N1和N2重复调用此算法；
+        2.  对每个待删除的子结点，从R中删除相关联的DOM结点；
+        3.  对每个待新增的子结点，编译并将得到的DOM结点插入到R中；
+    3.  比对S和T的`attr`，若有变化，修改R的属性为T的；
+    4.  将R和T关联；
+4.  以后将T作为新的S使用。
 
 具体实现中用`actions`保存了所有生成的动作，没有现场执行：
 
@@ -415,9 +414,9 @@ export function diffPatch(source: VNode, target: VNode) {
 
 对属性的Diff大多数时候是比较两个对象的键值对；对`children`的Diff是一个动态规划问题，我们限制编辑动作一次只能做一件事，这样所有动作的代价为1，通过比较序列的长度获取代价最小的编辑序列。根据Diff Patch算法描述，设计了三种编辑动作，求出最小编辑序列后再逐个生成对应的Patch动作：
 
-1. `keep`：结点同时存在于S和T中，保留但递归下降比对子结点和属性；
-2. `insert`：T中新增的结点；
-3. `delete`：S中待删除的结点。
+1.  `keep`：结点同时存在于S和T中，保留但递归下降比对子结点和属性；
+2.  `insert`：T中新增的结点；
+3.  `delete`：S中待删除的结点。
 
 ```ts
 export function diffPatchChildren(source: VNodeWrap, target: VNodeWrap) {
@@ -980,7 +979,7 @@ class Counter {
 
 这是一段“私货”，前端状态管理的话题一度挺火爆的，也出现过许多有意思的状态管理库。不过我一向主张简单的就是最好的，说个矛盾的事情，能理解FP、SOLID、Reactive Stream等各种编程思想的开发者，不需要特定的库也能组织好代码，理解程度不够的开发者，装模作样地使用一些有心智负担的库只会造就“Shit Mountain”。我自己算是React Hooks和Vue响应式风格的忠实拥趸，因此目前最契合我观念的是Vue3的Hooks，在React中我也经常掏出Mobx来个Vue换皮。这是个人在看了DDD的几本书之后产生的一些启发，一种“折衷说”：我认为前端状态管理的趋势是“用响应式库封装过的领域对象（OOP）和使用Hooks（FP）建立起的业务逻辑与视图层的组合”，OOP对现实世界业务模型的抽象能力有目共睹，Hooks在需求复杂迭代频繁的展示层的逻辑梳理和整合能力也得到了时间的验证，因此理想的状态应该是独立内聚的业务逻辑模块，相当轻量的视图层，通过几个Hooks与业务逻辑产生关联。用一段代码表达，虽然后者的代码量多一点儿，但从事过前端业务开发的话应该能看出后者在大型项目中的优势：
 
-+ Before：
+*   Before：
 
     ```ts
     const Counter = () => {
@@ -993,7 +992,7 @@ class Counter {
     }
     ```
 
-+ After：
+*   After：
 
     ```ts
     class Counter {
@@ -1109,9 +1108,9 @@ componentDidMount() {
 
 因此，我们要解释清楚三个问题：
 
-1. 为什么同步调用`setState`，对状态的更新是异步的？
-2. 为什么在React@18以前，异步调用`setState`，状态更新是同步的？
-3. 为什么在React@18以后，不管怎么调用`setState`，状态更新总是异步的？
+1.  为什么同步调用`setState`，对状态的更新是异步的？
+2.  为什么在React@18以前，异步调用`setState`，状态更新是同步的？
+3.  为什么在React@18以后，不管怎么调用`setState`，状态更新总是异步的？
 
 问题一React文档中有提及，React会“批量状态更新”，不过这个话太浅了，实际上我也有和[这个Issue](https://github.com/facebook/react/issues/11527#issuecomment-360199710%EF%BC%9B)里一样的疑惑，完全可以同步地改变状态，异步地安排Patch，减少心智负担。
 
@@ -1171,7 +1170,7 @@ export default {
 
 `nextTick`还有一个使用场景是父子组件的状态通信，下面的例子中，如果我们在子组件`this.$emit('click')`之后直接打印父组件传下来的`props`，会发现仍是旧值，但如果用`this.$nextTick`或者其他异步任务，则打印出来的是新值。
 
-+ 父组件
+*   父组件
 
     ```html
     <script>
@@ -1207,7 +1206,7 @@ export default {
     </template>
     ```
 
-+ 子组件
+*   子组件
 
     ```html
     <script>
@@ -1270,9 +1269,9 @@ Vue中的`nextTick`与`process.nextTick`的区别在于，它的实现曾经在�
 
 有两个各路文章很少说清楚的点：
 
-1. Vue文档中“挂载到DOM”的说法只是指创建并挂载或Patch了DOM结点，并不意味着浏览器已经重绘。假如我们在`mounted`钩子或`updated`钩子里面做个无限的微任务队列，虽然VDOM关联的DOM结点更新了，浏览器却没有机会重绘之；
+1.  Vue文档中“挂载到DOM”的说法只是指创建并挂载或Patch了DOM结点，并不意味着浏览器已经重绘。假如我们在`mounted`钩子或`updated`钩子里面做个无限的微任务队列，虽然VDOM关联的DOM结点更新了，浏览器却没有机会重绘之；
 
-2. 将生命周期钩子声明为异步的并不会影响钩子触发的顺序，但是会影响钩子回调与当前轮次浏览器重绘之间的顺序。像下面两段代码，第一个例子我们不会看到浏览器重绘出最新的状态，但是通过DOM API或者`this.$el`能够看到DOM状态已更新；第二个例子则能够看到重绘发生，因为从事件循环的角度说`sleep`安排的timers回调任务最快也得下一轮才开始执行，晚于当前轮次的重绘阶段：
+2.  将生命周期钩子声明为异步的并不会影响钩子触发的顺序，但是会影响钩子回调与当前轮次浏览器重绘之间的顺序。像下面两段代码，第一个例子我们不会看到浏览器重绘出最新的状态，但是通过DOM API或者`this.$el`能够看到DOM状态已更新；第二个例子则能够看到重绘发生，因为从事件循环的角度说`sleep`安排的timers回调任务最快也得下一轮才开始执行，晚于当前轮次的重绘阶段：
 
     ```js
     updated() {
@@ -1287,19 +1286,18 @@ Vue中的`nextTick`与`process.nextTick`的区别在于，它的实现曾经在�
 
 常见的Vue3生命周期清单：
 
-1. beforeCreate: props解析之后、`data()`、`computed`选项之前立即调用；
-2. created: `data()`、`computed`、`methods`等均可用，但还未挂载所以没有`$el`，适用于预取一些数据;
-3. beforeMount: 挂载之前调用，子组件在这之后才创建；
-4. mounted: 整棵子树（仅同步子组件）已被挂载到DOM上，此时`$el`可用；
-5. beforeUpdate: Diff之后，Patch之前，此时状态已更新，但还没有反馈到DOM结点上；
-6. updated: Patch之后，此时DOM已更新，但浏览器还未重绘；
-7. beforeUnmount: 组件被卸载之前，此时组件还保有全部功能；
-8. unmount: 整棵子树已卸载，常被用来做一些清理工作；
+1.  beforeCreate: props解析之后、`data()`、`computed`选项之前立即调用；
+2.  created: `data()`、`computed`、`methods`等均可用，但还未挂载所以没有`$el`，适用于预取一些数据;
+3.  beforeMount: 挂载之前调用，子组件在这之后才创建；
+4.  mounted: 整棵子树（仅同步子组件）已被挂载到DOM上，此时`$el`可用；
+5.  beforeUpdate: Diff之后，Patch之前，此时状态已更新，但还没有反馈到DOM结点上；
+6.  updated: Patch之后，此时DOM已更新，但浏览器还未重绘；
+7.  beforeUnmount: 组件被卸载之前，此时组件还保有全部功能；
+8.  unmount: 整棵子树已卸载，常被用来做一些清理工作；
 9.  activated: 和mounted类似，用于被缓存的组件；
-10.  deactivated: 和unmount类似，用于被缓存的组件。
+10. deactivated: 和unmount类似，用于被缓存的组件。
 
 在嵌套的层级中，从父组件`beforeMount`开始才创建子组件，子组件挂载好才挂载父组件。父组件传下来的props更新时，父组件的`beforeUpdate`钩子先触发，然后是子组件的`beforeUpdate`。
-
 
 ### Vue slot
 

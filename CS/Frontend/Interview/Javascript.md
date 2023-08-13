@@ -183,6 +183,7 @@ console.log(d.foo); // 42
 ```
 
 箭头函数并没有这样一个隐含的`this`，它只能捕获外部作用域存在的变量。特别是对象的成员函数，在使用`function`定义的函数体中，与其他语言的OOP风格保持一致，其`this`指向该对象本身：
+
 ```js
 obj = {
   foo: 42,
@@ -335,9 +336,9 @@ Edit：新学了点以前不知道的，1. `Number.NaN !== Number.NaN`；2. `Obj
 
 想了一下JS的正则表达式好像没什么值得说的。支持反向引用、具名分组和环视，常用API有`RegExp.prototype.test`、`RegExp.prototype.exec`、`String.prototype.match`和`String.prototype.replace`等。
 
-在应用`g`或`y`标志的情况下，JS的正则表达式对象是有状态的，这是个易错点，具体表现为这类正则表达式对象会记住上次匹配的位置（`r.lastIndex`），每次匹配从这个位置开始，直到越界才会重置为0。_global_ 和 _sticky_ 的区别是 _sticky_ 如果`lastIndex`位置处匹配失败，将直接返回`null`，而 _global_ 会从下一个字符继续尝试，在MDN上有更详细的解释：
+在应用`g`或`y`标志的情况下，JS的正则表达式对象是有状态的，这是个易错点，具体表现为这类正则表达式对象会记住上次匹配的位置（`r.lastIndex`），每次匹配从这个位置开始，直到越界才会重置为0。*global* 和 *sticky* 的区别是 *sticky* 如果`lastIndex`位置处匹配失败，将直接返回`null`，而 *global* 会从下一个字符继续尝试，在MDN上有更详细的解释：
 
-+ 使用 _global_：
+*   使用 *global*：
 
     ```js
     r = /a/g;
@@ -347,7 +348,7 @@ Edit：新学了点以前不知道的，1. `Number.NaN !== Number.NaN`；2. `Obj
     console.log(r.exec(s).index); // 2
     ```
 
-+ 使用 _sticky_：
+*   使用 *sticky*：
 
     ```js
     r = /a/y;

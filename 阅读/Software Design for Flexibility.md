@@ -6,21 +6,21 @@
 
 ## Foreword
 
-1. Don't just use functions; use _generic_ functions.
-2. Keep functions small.
-3. Often the best thing for a function to return is another function.
-4. Be prepared to treat data as code, perhaps even to the extreme of creating a new embedded programming language within your application if necessary.
-5. Be prepared to replace a data structure with a more general data structure that subsumes the original and extends its capabilities.
-6. Use automatic constraint propagation to avoid a premature commitment to which data items are inputs and which are outputs.
+1.  Don't just use functions; use *generic* functions.
+2.  Keep functions small.
+3.  Often the best thing for a function to return is another function.
+4.  Be prepared to treat data as code, perhaps even to the extreme of creating a new embedded programming language within your application if necessary.
+5.  Be prepared to replace a data structure with a more general data structure that subsumes the original and extends its capabilities.
+6.  Use automatic constraint propagation to avoid a premature commitment to which data items are inputs and which are outputs.
 
 ## Preface
 
-+ It is hard to build systems that have acceptable behavior over a
-larger class of situations than was anticipated by their designers.
-**The best systems are evolvable**: they can be adapted to new
-situations with only minor modification. 
+*   It is hard to build systems that have acceptable behavior over a
+    larger class of situations than was anticipated by their designers.
+    **The best systems are evolvable**: they can be adapted to new
+    situations with only minor modification.
 
-+ **Flexibility is as important an issue as efficiency and correctness**.
+*   **Flexibility is as important an issue as efficiency and correctness**.
 
 ## Flexibility in Nature and Design
 
@@ -28,19 +28,19 @@ situations with only minor modification.
 
 本章我最深以为然的是对于灵活性、效率和安全性的讨论，我们经常局限于眼前的复杂度，在没有建立其对软件系统的全面认识时就过早优化，从而忽视了项目长期迭代维护的代价。我们总是对软件工程报有天真的假设，例如团队是稳定的、网络是可靠的、文档是完善的且总是可用的等等等等。这又让我想起那个著名的“如果项目Leader被巴士创死”的段子。
 
-+ An implementation should be conservative in its sending behavior, and liberal in its receiving behavior.
+*   An implementation should be conservative in its sending behavior, and liberal in its receiving behavior.
 
-+ The principal cost of software is the time spent by
-programmers over the lifetime of the product, including
-maintenance and adaptations that are needed for changing
-requirements.
+*   The principal cost of software is the time spent by
+    programmers over the lifetime of the product, including
+    maintenance and adaptations that are needed for changing
+    requirements.
 
-+ **The real cost of a system is the time spent by programmers—
-in designing, understanding, maintaining, modifying, and debugging
-the system**. A system that is easily adapted and maintained eliminates
-one of the largest costs: teaching new programmers how the
-existing system works, in all its **gory detail**, so that they know where
-to reach in and modify the code.
+*   **The real cost of a system is the time spent by programmers—
+    in designing, understanding, maintaining, modifying, and debugging
+    the system**. A system that is easily adapted and maintained eliminates
+    one of the largest costs: teaching new programmers how the
+    existing system works, in all its **gory detail**, so that they know where
+    to reach in and modify the code.
 
     > “gory detail”乐死我了。
 

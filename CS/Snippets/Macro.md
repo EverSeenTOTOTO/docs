@@ -115,7 +115,6 @@ When the identifier appears as a `set!` target, the entire `set!` expression is 
 
 这下`fake-value`看起来和一个直接定义的数值变量别无二致了。不知道这个例子有没有让你想起只读数据、原型链、观察者模式等机制，它们都可以用代理实现。
 
-
 #### 进阶：编译期计算与嵌套宏
 
 首先正式地认识一下`datum`和`syntax`对象。在Racket（Scheme，Lisp？）中，代码和数据的分界线不是那么明显，我们可以在一个代码片段前加上`'`来把它当作数据一样处理：`'(+ 1 2)`，这让人联想到`eval("1 + 2")`中的字符串，但`datum`性质上和`symbol`更相似一点。如果给`datum`绑定上必要的元信息，包括作用域和在源码中的位置等，就成了一个`syntax`对象。因此存在从两者之间转换的方法`syntax->datum`和`datum->syntax`，前者剥离元信息，后者附加元信息。
@@ -131,7 +130,7 @@ When the identifier appears as a `set!` target, the entire `set!` expression is 
 (println bar) ; error: bar: unbound identifier
 ```
 
-```scheme 
+```scheme
 (define-syntax def-bar
   (lambda (stx)
     (datum->syntax stx '(define bar 42))))
@@ -187,7 +186,7 @@ When the identifier appears as a `set!` target, the entire `set!` expression is 
 
 我猜你可能像~机智的~我一样首先想到下面这样的写法：
 
-```scheme 
+```scheme
 (define-syntax fib
   (lambda (stx)
     (syntax-case stx ()

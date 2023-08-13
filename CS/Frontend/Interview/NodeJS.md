@@ -15,13 +15,13 @@ console.log(d == d2); // true
 
 通过调整`require.cache`，可以控制缓存刷新，但简单地清除一个模块的缓存有很多注意点，例如在Windows上文件名是不区分大小写的，而NodeJS以文件名标识模块，仅清除`d.js`并不会导致`D.js`模块缓存被清理：
 
-+ d.js
+*   d.js
 
     ```js
     console.log(`${require.main.filename} loading ${__filename}`);
     ```
 
-+ c.js
+*   c.js
 
     ```js
     require('./d.js'); // c.js loading d.js
@@ -37,7 +37,7 @@ console.log(d == d2); // true
 
 再如，多进程架构中，往往清理一个进程的模块缓存还不够，要同步使其他进程的缓存失效，这个问题与清除多核CPU缓存面临的问题是一样的：
 
-+ c.js
+*   c.js
 
     ```js
     const cp = require('child_process');
@@ -49,7 +49,7 @@ console.log(d == d2); // true
     require('./d'); // no effect
     ```
 
-+ a.js
+*   a.js
 
     ```js
     require('./d'); // a.js loading d.js
@@ -85,11 +85,8 @@ require('./d.js'); // 空文件
 require('./e.txt'); // 文件内容为 hello world
 ```
 
-
-```
-loading d.js
-hello world
-```
+    loading d.js
+    hello world
 
 不过NodeJS长期将这种机制标记为废弃，并明确指出会降低性能或造成微妙的BUG。在ESM模块中，NodeJS又提供了一套实验性的[Loader API](https://nodejs.org/docs/latest-v14.x/api/esm.html#esm_loaders)，我还没有用过。
 
@@ -99,14 +96,14 @@ hello world
 
 虽然名字是`exec`，但`exec`与POSIX系统调用`execve(2)`截然不同，`execve`会替换掉当前进程所执行的程序，包括整个程序的栈、堆和数据段：
 
-```c 
+```c
 char* args[] = {"", "hello world", NULL};
 
 execve("/bin/echo", args, envp); // hello world
 printf("will not print because current process is replaced");
 ```
 
-而child_process的`exec`只不过是在子进程中运行shell。如果要执行的本身就是个可执行文件，还可以跳过shell这一层，直接使用`execFile`执行，获得少量的性能提升。
+而child\_process的`exec`只不过是在子进程中运行shell。如果要执行的本身就是个可执行文件，还可以跳过shell这一层，直接使用`execFile`执行，获得少量的性能提升。
 
 虽然名字是`fork`，但`fork`和POSIX系统调用`fork(2)`也截然不同，`fork(2)`会克隆当前进程的内存空间，因此才有关于`fork`的经典问题：
 
@@ -121,7 +118,7 @@ wait(NULL);
 
 `i=0`的时候主进程`fork`了一个子进程，子进程的状态也是`i=0`，随后执行`printf`打印两个`-`，接着`i=1`，两个进程各自又克隆了两个子进程，于是打印四个`-`，所以理论上应该输出6次`-`，但实际上执行这段程序通常只有很小的概率能得到6个`-`，更多时候是8个。这是因为标准输出的缓存区也会被克隆，故第一次克隆后缓存区有两个，各放入一个`-`，第二次克隆后缓存区是四个，又放入一个`-`共计8个`-`，只有极少数情况下刚好在第一次`printf`之后，第二次`fork`前发生了缓冲区flush才能得到6个`-`的输出，我们也可以主动在`printf`语句后面加入`fflush(stdout)`来冲刷缓冲区。
 
-所以child_process中的`fork`只是个借名。真说起来，和`fork(2)`行为有点类似的反而是`cluster`，下面代码会输出6个`-`，但是它输出6个`-`的原因和`fork(2)`也不能一概而论，这里只有主进程会调用`fork`，共创建了两个，主进程自己打印了两次`-`，两个子进程各自重新执行此文件也打印了两次，共计6次：
+所以child\_process中的`fork`只是个借名。真说起来，和`fork(2)`行为有点类似的反而是`cluster`，下面代码会输出6个`-`，但是它输出6个`-`的原因和`fork(2)`也不能一概而论，这里只有主进程会调用`fork`，共创建了两个，主进程自己打印了两次`-`，两个子进程各自重新执行此文件也打印了两次，共计6次：
 
 ```js
 const cluster = require('cluster');
@@ -134,7 +131,7 @@ for (let i = 0; i < 2; ++i) {
 }
 ```
 
-## child_process、cluster和worker_threads
+## child\_process、cluster和worker\_threads
 
 ## stream
 
@@ -163,7 +160,7 @@ write('hello', () => {
 
 `Duplex`实现了`Writable`和`Readable`的全部接口，其中读写端是相互独立的，包括内部的缓冲区也是独立的，因为读写速度未必一致。而`Transform`则在`Duplex`上再封装了一层，适合用于实现流的过滤和转换等。
 
-## async_hooks
+## async\_hooks
 
 上面刚提到NodeJS异常处理的时候容易遗漏，对于处在异步作用域里面的异常，尽管可以用`unhandledRejection`和`uncaughtException`兜底，但捕获到的异常会丢失整个调用栈，这使得定位错误链路非常麻烦，比如下面这个例子：
 
@@ -183,14 +180,12 @@ function foo() {
 })()
 ```
 
-```
-main 1, caller 0
-foo 5, caller 1
-Error: foo
-    at Timeout.foo [as _onTimeout] (demo.js:7:18)
-    at listOnTimeout (node:internal/timers:564:17)
-    at process.processTimers (node:internal/timers:507:7)
-```
+    main 1, caller 0
+    foo 5, caller 1
+    Error: foo
+        at Timeout.foo [as _onTimeout] (demo.js:7:18)
+        at listOnTimeout (node:internal/timers:564:17)
+        at process.processTimers (node:internal/timers:507:7)
 
 由于`foo`在`setTimeout`创建的异步上下文中执行，尽管最终打印出了报错点`demo.js:7:18`，却丢失了相应的`main() -> foo()`调用栈，非常鸡肋。于是NodeJS提供了`async_hooks`可以追踪异步资源生命周期与异步上下文信息。所谓异步资源是NodeJS对那些运行时资源的抽象，通常都有一个相关联的回调，例如各种Timer、`net.createServer(cb)`、`fs.open(cb)`、`stream.write(cb)`等，这些方法会都创建和操作一些底层资源，操作完成后执行回调`cb`。这些回调执行时所处的环境与注册回调时所处的环境通常是不同的，这里的环境即所谓的“上下文”，像这样非阻塞地安排各种任务，由底层事件循环调度执行并在完成后回调的异步执行流在NodeJS中相当古老。像上面的例子，我们使用`executionAsyncId`获取当前执行上下文的id，用`triggerAsyncId`获取创建此上下文的上层环境的id，很容易推测出`0`是顶层执行上下文，`0`创建了上下文`1`并异步调用`main`，`main`同步调用`setTimeout`，`setTimeout`创建上下文`5`并异步调用`foo`，如此一来整条链路就清晰了。
 
@@ -247,4 +242,3 @@ elapsed: 301.8494890034199ms
 ```
 
 使用`executionAsyncResource`的优点是不用我们自己去区分每个请求的链路，假设我们使用一个`Map`记录请求开始的时机，那么每个请求都得生成唯一的一个键，以便区分每个请求触发的链路。换句话说使用`Map`是在一个存储中存放不同的Id以区分请求，而使用`executionAsyncResource`则每个请求的中间件执行链路相互独立，我们为每条链路创建一个存储，这些存储中统一使用键`sym`记录请求开始时机，应该说是有点反直觉的。
-

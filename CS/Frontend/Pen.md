@@ -4,7 +4,7 @@
 
 小工具陆陆续续迭代到5.4版本了，做了很多改进和优化。这里着重说一说其中比较值得记录的：
 
-1. 记住客户端主题配置
+1.  记住客户端主题配置
 
     用`localStorage`是不对的，因为这意味着页面已加载在执行js了，而我们要的是服务端在响应html时就已经确定了客户端所要求的主题配置，因此这些信息需要在首个HTTP请求里面带上，简单点就用cookie了，如果你第二次刷新页面大约能在文档的请求头中看到这样的内容：
 
@@ -12,8 +12,7 @@
     Cookie: themeMode=%22light%22; drawerVisible=true
     ```
 
-
-2. `sticky`标题头遮挡
+2.  `sticky`标题头遮挡
 
     文档类型的网页通常都有目录定位的功能，假如使用`scrollIntoView`实现，如果页面刚好有一个`position: sticky`的标题头就会对滚上来的子标题形成遮挡，从《CSS世界》上学到了一种解决方案，利用内联元素不会加入行盒高度计算的特性，将原有的标题：
 
@@ -29,7 +28,7 @@
 
     然后给里面的`<span>`设置一个`padding-top`，这个`padding-top`不会破坏行盒高度而是会层叠渲染，可以撑起标题到顶部的一段距离。
 
-3. 标题头锚点定位
+3.  标题头锚点定位
 
     通常给子标题添加锚点定位的方案是在子标题旁边放一个鼠标悬浮才展示的图标，点击这个图标会改变页面hash为预先给该标题设置好的一个id值。但我打算做成直接点击子标题就可以改变hash的方式。这时和上面的方案有一点冲突，因为`padding-top`包括在鼠标点击热区内，于是标题上面被`padding-top`撑起来的一小块区域也可以响应鼠标事件，配合`pointer: cursor`就更奇怪了。因此想了下干脆在子标题里面加两个`<span>`，一个宽度为0，设置`padding-top`负责定位，另一个负责展示标题文字以及响应鼠标事件：
 
@@ -57,7 +56,7 @@
 
     最后的效果貌似还挺不错的，就是元素有点多。
 
-4. 优化服务端内存占用
+4.  优化服务端内存占用
 
     5.x最初的几个版本内存占用相当恐怖，足足200多MB，比我的IDE还要多。用`node --inspect-brk`在chrome调试工具里面看了下，发现模块缓存占了超过50%的比重，主要是MUI的各种组件，但实际上我用到的组件并不多，于是推测是构建工具的Tree Shaking没有做好。通过对构建出来的服务端代码的分析，发现了类似`var mui = require("mui/material")`这样的代码，因此手动修改了所有使用到MUI组件的地方，改为直接`import`对应的组件而非整个库：`import XXX from "@mui/material/XXX`；
 
@@ -75,7 +74,7 @@
 
 <img src='./pagespeed.webp' style="width:600px" />
 
----
+***
 
 重构的动机是最近用vite做了一个[SSR项目模板](https://github.com/EverSeenTOTOTO/browser-app-boilerplate/tree/react-vite-ssr)，非常想用一个实际的项目来实践一下，刚好以前开发的这个小工具也很简陋，全是BUG，一直打算重构升级下，~~结果升级完了还是很简陋且一堆BUG~~。于是`git switch --orphan`拉了一个完全为空的分支开始开发。
 
@@ -83,11 +82,11 @@
 
 技术选型也有一些变化：
 
-  1. 淘汰了不太活跃的`markdown-it`生态，换成了`remark`和`rehype`来处理markdown和markdown转成的html。其实两个用起来体验都不太好，`markdown-it`的插件老旧，`remark`和`rehype`生态文档很多都是固定的模板，看似写了一堆，实际不能够解决问题，还是得看别人的源码。比如我想要的copy、highlightjs、toc等功能社区插件都不太行，干脆自己写了；
-  2. websocket的实现前后端依然采用`socket.io`，省心，同时升级到了最新的版本；
-  3. 文件监听用了`chokidar`，这个库貌似比较活跃，vite底层也用的是它；
-  4. 前端依然是`react+react-router@6+mobx+mui@4`，原本想实践一下vue3，但为了尽可能复用以前的代码还是算了。~~顺便吐槽一下MUI虽然出了v5版本，官网文档里面的代码参考却完全没有更新，用起来全是报错，所以还是降到了我更熟悉的v4~~。Edit: 后面再看MUI的文档已经更新了，有时间再做一次migration吧；
-  5. 开发构建工具换成了vite，以前是webpack。虽然webpack确实慢但也不至于讨厌它，毕竟以前靠它吃过饭，这次换vite纯粹是想尝鲜。
+1.  淘汰了不太活跃的`markdown-it`生态，换成了`remark`和`rehype`来处理markdown和markdown转成的html。其实两个用起来体验都不太好，`markdown-it`的插件老旧，`remark`和`rehype`生态文档很多都是固定的模板，看似写了一堆，实际不能够解决问题，还是得看别人的源码。比如我想要的copy、highlightjs、toc等功能社区插件都不太行，干脆自己写了；
+2.  websocket的实现前后端依然采用`socket.io`，省心，同时升级到了最新的版本；
+3.  文件监听用了`chokidar`，这个库貌似比较活跃，vite底层也用的是它；
+4.  前端依然是`react+react-router@6+mobx+mui@4`，原本想实践一下vue3，但为了尽可能复用以前的代码还是算了。~~顺便吐槽一下MUI虽然出了v5版本，官网文档里面的代码参考却完全没有更新，用起来全是报错，所以还是降到了我更熟悉的v4~~。Edit: 后面再看MUI的文档已经更新了，有时间再做一次migration吧；
+5.  开发构建工具换成了vite，以前是webpack。虽然webpack确实慢但也不至于讨厌它，毕竟以前靠它吃过饭，这次换vite纯粹是想尝鲜。
 
 另外有一些感悟，整个开发过程中最困难的watcher模块都没有让我打退堂鼓，在完成度80～90%的时候却非常想先这样用起来不肝了。我之惰性可见一斑。另外我总是不能以一种比较全面透彻的视角看待整个问题，频频掉入各种边界情况的陷阱中，产生了大量的重复劳动。我想应该是有一些方法论来改善这一情况的，还需要进一步学习和训练。
 
@@ -109,7 +108,7 @@ props（vue的slots），但是它们各自的缺点也逐渐暴露：mixin很�
 
 在这种情况下，富有创造力的react团队改造了以往的函数式组件，他们设法为函数式组件加上了缺失的内部状态，这段时间react的内部架构也迁移到了fiber的实现，由于函数式组件本身不存放状态，他们的状态存放在各自的fiber节点上：
 
-+ `react-reconciler/src/ReactFiberHooks.new.js`
+*   `react-reconciler/src/ReactFiberHooks.new.js`
 
     ```ts
     const newHook: Hook = {

@@ -28,14 +28,14 @@
 
 要实现这种启动方式，创建一个文件夹`initramfs`，在根目录下创建一个`init`文件，这里的关键在于`init`文件中的这两行，提供了操作系统运行所必需的目录结构：
 
-```bash 
+```bash
 mkdir -p /proc && mount -t proc none /proc
 mkdir -p /sys && mount -t sysfs none /sys
 ```
 
 随后再将构建好的`busybox`拷贝到`initramfs/bin/`下，使用`cpio`打包，最终`qemu-system-riscv64`启动内核的命令如下：
 
-```bash 
+```bash
 qemu-system-riscv64 \
   -M virt \
   -kernel build/vmlinux \
@@ -46,7 +46,7 @@ qemu-system-riscv64 \
 
 各种命令的细节可参考示例项目的`initramfs`分支，启动后大致长下面这样：
 
-```bash 
+```bash
 OpenSBI v0.9
    ____                    _____ ____ _____
   / __ \                  / ____|  _ \_   _|
@@ -77,7 +77,7 @@ Linux (none) 5.17.5 #2 SMP Mon Jul 4 11:47:00 CST 2022 riscv64 GNU/Linux
 
 我们也可以使用`mkfs`实际制作一个文件系统镜像。首先使用`dd`生成一个128MB的二进制文件，然后使用`mkfs`格式化，并挂载到磁盘上。之后和上面创建`initramfs`文件夹里面的内容一样，我们在挂载的目录里面手动创建`init`文件并拷贝`busybox`。最终使用`qemu-system-riscv64`启动内核：
 
-```bash 
+```bash
 qemu-system-riscv64 \
   -M virt \
   -kernel build/vmlinux \
