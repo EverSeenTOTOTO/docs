@@ -65,7 +65,7 @@
     ```
 
     :::Info
-    后续看了下，可能和`fdisk`与`parted`使用的单位不同有关，SSD厂商使用1000作为进制，而我们常说GB、MB都是以1024为进制。512GB的SSD有$\frac{512\*1000^3}{1024^3}\approx 476.83GB$的实际容量，严格算的话可以利用扇区数$\frac{(1000214527-2048)\*512}{1024^3}\approx 476.94GB$，（需确认自己的扇区大小Sector size是512B）差不多。[这里](http://www.jinbuguo.com/storage/ssd_usage.html)有一篇比较好的文档。
+    后续看了下，可能和`fdisk`与`parted`使用的单位不同有关，SSD厂商使用1000作为进制，而我们常说GB、MB都是以1024为进制。512GB的SSD有$\frac{512*1000^3}{1024^3}\approx 476.83GB$的实际容量，严格算的话可以利用扇区数$\frac{(1000214527-2048)*512}{1024^3}\approx 476.94GB$，（需确认自己的扇区大小Sector size是512B）差不多。[这里](http://www.jinbuguo.com/storage/ssd_usage.html)有一篇比较好的文档。
     :::
 
 4.  分区后LFS文档推荐将其挂载在`/mnt/lfs`下，并编辑`/etc/fstab`设置开机时自动挂载。

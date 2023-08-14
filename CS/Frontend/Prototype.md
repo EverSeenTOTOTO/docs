@@ -234,7 +234,7 @@ function Account:new() -- 注意不是Account.prototype:new
 end
 ```
 
-创建派生类的要点是让派生类获取`Account`上面的方法，参考之前的`new`，同时补充了“让派生类的`prototype`和基类`prototype`一致”的内容，参考前面的JS代码`Object.setPrototypeOf(Derived2.prototype, Base.prototype)`：
+创建派生类的要点是让派生类获取`Account`上面的方法，参考上面`new`的实现，同时补充“让派生类的`prototype`和基类`prototype`一致”的内容，参考前面的JS代码`Object.setPrototypeOf(Derived2.prototype, Base.prototype)`：
 
 ```lua
 function Account:extend()

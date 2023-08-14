@@ -34,6 +34,6 @@
 *   Twenty years from now you will be more disappointed by the things that you didn't do than by the ones you did do. So throw off the bowlines. Sail away from the safe harbor. Catch the trade winds in your sails. Explore. Dream. Discover.（Minecraft结束语）
 *   Great minds discuss semantics, average minds discuss syntax and small minds discuss syntax of comments.
 *   If there’s a book that you want to read, but it hasn’t been written yet, then you must write it.
-*   $\int\_{\text{birth}}^{\text{death}} \text{study}dt = \text{life}$.
+*   $\int_{\text{birth}}^{\text{death}} \text{study}dt = \text{life}$.
 *   归根结底，博客、播客、短视频都是一个人表达自己的地方，是他们用数字形式说 “这就是我” 的方式。
 *   知识是以分形的方式扩展的，从远处看，边缘看起来很平滑，但是一旦你学得足够多以接近它们，你会发现它们其实充满了缺口。（你的大脑希望忽视这些缺口，以便构建一个更简单的世界模型。）

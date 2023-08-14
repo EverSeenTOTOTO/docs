@@ -369,7 +369,7 @@ function doChangeStyle(action: ActionChangeStyle) {
 }
 ```
 
-接着设计一套很Naive的Diff Patch算法，更多Diff Patch算法介绍见[这里](./DataStructure-Algorithm.md#H7465038581ab4d99)：
+接着设计一套很Naive的Diff Patch算法：
 
 1.  假设旧VDOM结点为S，关联的真实DOM结点为R，新VDOM结点为T，比对它们的`tag`名称；
 2.  如果S和T的`tag`不同：
@@ -531,7 +531,7 @@ Diff Patch同时也是实现SSR“水化”的关键，这是废话，不表。
 
 什么是组件，上面点了一下，组件的出现是为了逻辑复用，逻辑复用最基础的方式就是抽象成函数，所以组件本质就是一个生成VDOM的函数。那为什么又有所谓的class组件和functional组件之分呢？这还得从FP和OOP思想的差异说起，我假设读者已经对FP的常见概念，如“纯函数”、“副作用”有所了解，因为感觉我接下来的表达还不够清晰，理解还不够透彻。
 
-函数有其内部状态，每次执行时函数体内定义的变量分配在其栈上，每次执行完成都会随着函数栈帧的销毁回收。所以理论上只要参数不变函数的每次执行都应该得到相同的效果，但实际上对非纯函数式的语言，由于闭包捕获、获取时间戳、写入标准输出流等外部状态的变化，即使参数没变，函数在不同的时机执行也可能得到不同的效果。有时这会造成难以察觉的BUG，因此我们应该尽可能编写“纯”的、前后行为一致的函数，这样的函数对其使用者来说，只代表一段固定的逻辑，是个黑盒。那逻辑要操作的数据放在哪里呢？一种方法是用函数表达数据结构，这是可行的，但比较晦涩，我在[JS原型继承](./Javascript.md#H3b3a160a963d49a3)这一节的末尾处写了一个例子。更符合人们直觉的是用`struct`之类的东西表达一个数据结构，因此理想的状态是：用对象表达一组数据，前端常称之为状态`state`，用一组纯函数表达操作这个对象的逻辑，比如`render`，只要提供的参数相同，函数的行为（输出的VDOM）始终相同：
+函数有其内部状态，每次执行时函数体内定义的变量分配在其栈上，每次执行完成都会随着函数栈帧的销毁回收。所以理论上只要参数不变函数的每次执行都应该得到相同的效果，但实际上对非纯函数式的语言，由于闭包捕获、获取时间戳、写入标准输出流等外部状态的变化，即使参数没变，函数在不同的时机执行也可能得到不同的效果。有时这会造成难以察觉的BUG，因此我们应该尽可能编写“纯”的、前后行为一致的函数，这样的函数对其使用者来说，只代表一段固定的逻辑，是个黑盒。那逻辑要操作的数据放在哪里呢？一种方法是用函数表达数据结构，这是可行的。更符合人们直觉的是用`struct`之类的东西表达一个数据结构，因此理想的状态是：用对象表达一组数据，前端常称之为状态`state`，用一组纯函数表达操作这个对象的逻辑，比如`render`，只要提供的参数相同，函数的行为（输出的VDOM）始终相同：
 
 ```ts
 const state = {
@@ -571,7 +571,7 @@ export interface VNodeComponent<T> extends VNodeBase<T, 'component'> {
 }
 ```
 
-这里蕴含着“惰性求值”的思想，我们保存下了组件函数和执行所需的状态，而不是原地执行组件并保存得到的VDOM。在React Fiber这一节还会进一步阐释：
+这里蕴含着“惰性求值”的思想，我们保存下了组件函数和执行所需的状态，而不是原地执行组件并保存得到的VDOM：
 
 ```ts
 const Home = () => <Counter />; // 实际被编译为React.createElement(Counter)，框架内部可以自由控制Counter的执行时机
@@ -582,7 +582,7 @@ const Home = () => Counter();   // Home执行连带着执行Counter，无法中�
 
 ```ts
 export function evalComponent(node: VNodeComponent) {
-  const vdom = node.component(node.state);
+  const vdom = node.component(node.state); // UI=F(State)
 
   evalVNode(vdom);
   node.output = vdom.output;
@@ -642,7 +642,7 @@ export function diffPatchComponent(source: VNodeComponent, target: VNodeComponen
 
 ## 响应式和状态管理
 
-上面这个例子很重要很重要，因为它引出了响应性话题：我们需要手动绑定状态改变后的重绘逻辑，这正是jQuery被淘汰的原因。这个例子中只要在按钮按下后更新状态还好，假如还有`<input>`标签呢？我们不仅要在状态改变时更改输入框里面的值，还要在用户输入后将输入变化同步给应用状态，即所谓的“**双向绑定**”。一个两个元素都需要手动绑定一组状态更新逻辑，应用复杂之后根本顶不住，稍有疏忽就会产生BUG。因此React和Vue最大的贡献是实现了响应性，我们只需要关注状态变更，由框架完成重绘或同步UI状态给应用状态的操作。（准确来说，Vue实现了双向绑定，React中更提倡单向数据流）。
+上面用例中的注释很重要很重要，因为它引出了响应性话题：我们需要手动绑定状态改变后的重绘逻辑，这正是jQuery被淘汰的原因。这个例子中只要在按钮按下后更新状态还好，假如还有`<input>`标签呢？我们不仅要在状态改变时更改输入框里面的值，还要在用户输入后将输入变化同步给应用状态，即所谓的“**双向绑定**”。一个两个元素都需要手动绑定一组状态更新逻辑，应用复杂之后根本顶不住，稍有疏忽就会产生BUG。因此React和Vue最大的贡献是实现了响应性，我们只需要关注状态变更，由框架完成重绘或同步UI状态给应用状态的操作。（准确来说，Vue实现了双向绑定，React中更提倡单向数据流）。
 
 ### React
 
@@ -675,7 +675,7 @@ class React.Component {
   setState(state) {
     if (!shallowEquals(state, this.state)) {
       this.state = state;
-      triggerRerender();
+      triggerRerender(); // 触发重绘
     }
   }
 }
@@ -697,7 +697,7 @@ class AnonymousClass extends React.Component {
 }
 ```
 
-在真正的React中更新状态的行为是异步的，不能简单地使用`this.state.count + 1`计算新值，[后文](#H704caeb6d4339f2b)有更详细的介绍。
+> 在真正的React中更新状态的行为是异步的，不能简单地使用`this.state.count + 1`计算新值。
 
 我接触React的时间其实要晚于Vue，那时已经是React Hooks元年了。所以我几乎没怎么书写过class组件。那么在函数式组件中，要怎么达成同样效果呢？答案已经呼之欲出了，状态在外面放哪儿根本无所谓，重点是提供一个包装过的方法，这个方法看起来只是修改状态的，其实里面还封装了触发重绘的逻辑，这不就是`useState`吗！
 
@@ -789,7 +789,7 @@ export function useState<T>(init: T): [T, (value: T) => void] {
 ```
 
 ```ts
-let initOrClear: (() => void) | boolean = false;
+let initOrClear: (() => void) | boolean = false; // 一个清理副作用的函数或者表示已初始化的true
 
 export function useEffect<T>(effect: () => void | (() => void), deps: Array<T>): void {
   if (!initOrClear || deps.find((dep) => changedStates.includes(dep))) { // if any deps has changed
