@@ -89,9 +89,9 @@ drawLine(ctx, P(80, 40), P(10, 20), { color: "red" });
 ```ts
 function drawLine(ctx: CanvasRenderingContext2D, start: Point, end: Point, { color } = { color: 'black' }) {
   let transpose = false;
-
   let s = start;
   let e = end;
+
   if (Math.abs(start.x - end.x) < Math.abs(start.y - end.y)) { // 斜率大于1，delta y > delta x，转置
     s = P(start.y, start.x);
     e = P(end.y, end.x);
@@ -122,9 +122,9 @@ function drawLine(ctx: CanvasRenderingContext2D, start: Point, end: Point, { col
 ```ts
 function drawLine(ctx: CanvasRenderingContext2D, start: Point, end: Point, { color } = { color: 'black' }) {
   let transpose = false;
-
   let s = start;
   let e = end;
+
   if (Math.abs(start.x - end.x) < Math.abs(start.y - end.y)) { // 斜率大于1，delta y > delta x
     s = P(start.y, start.x);
     e = P(end.y, end.x);
@@ -157,7 +157,7 @@ drawPoint(ctx, transpose ? P(y, x) : P(x, y), { color });
 
 error += k;
 if (error > 0.5) {
-  y += 1;
+  y += dy > 0 ? 1 : -1;
   error -= 1;
 }
 ```
@@ -167,9 +167,9 @@ if (error > 0.5) {
 ```ts
 function drawLine(ctx: CanvasRenderingContext2D, start: Point, end: Point, { color } = { color: 'black' }) {
   let transpose = false;
-
   let s = start;
   let e = end;
+
   if (Math.abs(start.x - end.x) < Math.abs(start.y - end.y)) { // 斜率大于1，delta y > delta x
     s = P(start.y, start.x);
     e = P(end.y, end.x);
@@ -184,7 +184,7 @@ function drawLine(ctx: CanvasRenderingContext2D, start: Point, end: Point, { col
 
   const dx = e.x - s.x;
   const dy = e.y - s.y;
-  const dy2 = 2 * dy;
+  const dy2 = 2 * Math.abs(dy);
   const dx2 = 2 * dx;
   let { y } = s;
   let error = 0;
@@ -194,9 +194,36 @@ function drawLine(ctx: CanvasRenderingContext2D, start: Point, end: Point, { col
 
     error += dy2;
     if (error > dx) {
-      y += 1;
+      y += dy > 0 ? 1 : -1;
       error -= dx2;
     }
   }
 }
 ```
+
+借助一个叫做`obj-file-parser`的npm包我们也可以绘制一下教程中的obj模型文件：
+
+```ts
+const objFile = new OBJFile(obj).parse();
+const { faces, vertices } = objFile.models[0];
+
+const width = 800;
+const height = 800;
+
+for (const record of faces) {
+  for (let i = 0; i < 3; ++i) {
+    // 连接三角形的三个顶点
+    const v0 = vertices[record.vertices[i].vertexIndex - 1];
+    const v1 = vertices[record.vertices[(i + 1) % 3].vertexIndex - 1];
+
+    const x0 = ((v0.x + 1) * width) / 2;
+    const y0 = ((v0.y + 1) * height) / 2;
+    const x1 = ((v1.x + 1) * width) / 2;
+    const y1 = ((v1.y + 1) * height) / 2;
+
+    drawLine(ctx, P(x0, y0), P(x1, y1));
+  }
+}
+```
+
+<img src="./model.png" />

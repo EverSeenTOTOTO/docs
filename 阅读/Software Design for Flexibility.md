@@ -1,4 +1,4 @@
-# 《Software Design for Flexibility -- How to Avoid Programming Yourself into a Corner》
+# Software Design for Flexibility -- How to Avoid Programming Yourself into a Corner
 
 听说是《SICP》的精神续作，重点是出版于2021年，很新。半年前就说想看，今天终于开始了。
 
