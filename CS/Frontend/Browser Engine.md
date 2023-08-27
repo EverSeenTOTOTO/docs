@@ -97,7 +97,7 @@ Firefox的Rule Tree和Style Context Tree：
 
 Rule Tree储存CSS规则，在避免重复计算的同时共享上层数据。Rule Tree中的层级越深，优先级越高。整个计算过程是惰性的，只有需要计算结点样式的时候才添加到树中。Style Context按照领域划分为不同的结构，例如有的负责`color`于是只有一个属性，有的负责`margin`因此有四个属性。一个结构体中的属性要么是继承的，要么是非继承的（有定义，或者`reset`使用默认值）。
 
-根据Rule Tree构建Style Context Tree，~结合文章中的例子看都有点云里雾里~：
+根据Rule Tree构建Style Context Tree，~~结合文章中的例子看都有点云里雾里~~：
 
 When computing the style context for a certain element, we first compute a path in the rule tree or use an existing one. We then begin to apply the rules in the path to fill the structs in our new style context. We start at the bottom node of the path - the one with the highest precedence (usually the most specific selector) and traverse the tree up until our struct is full. If there is no specification for the struct in that rule node, then we can greatly optimize - we go up the tree until we find a node that specifies it fully and simply point to it - that's the best optimization - the entire struct is shared. This saves computation of end values and memory.
 If we find partial definitions we go up the tree until the struct is filled.
@@ -173,11 +173,11 @@ Webkit的RenderLayer树：看成是Render Tree的合并，处于同一层级的R
 
 ## 主流浏览器信息
 
-| 浏览器 | 渲染引擎 | JS运行时 |
-| ---- | ---- | ---- |
-| Chromium, Chrome, Microsoft Edge | Blink | V8 |
-| Gecko, Servo, Firefox | WebRender | SpiderMonkey |
-| Webkit, Safari | Webkit | JavascriptCore |
-| Android WebView | | |
-| WKWebView | | |
-| Microsoft Edge Webview2 | | |
+| 浏览器                              | 渲染引擎      | JS运行时          |
+| -------------------------------- | --------- | -------------- |
+| Chromium, Chrome, Microsoft Edge | Blink     | V8             |
+| Gecko, Servo, Firefox            | WebRender | SpiderMonkey   |
+| Webkit, Safari                   | Webkit    | JavascriptCore |
+| Android WebView                  |           |                |
+| WKWebView                        |           |                |
+| Microsoft Edge Webview2          |           |                |

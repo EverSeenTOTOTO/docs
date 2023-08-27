@@ -1,6 +1,6 @@
 # [^link] On Agnostic Truth
 
-[^link]: http://www.spronck.net/agnostictruth.html
+[^link]: <http://www.spronck.net/agnostictruth.html>
 
 一篇很有意思的文章，很多人认为坚定的无神论者与有神论者之间是水火不容的，但其实真正被他们划开界限的是怀疑论者、不可知论者。
 

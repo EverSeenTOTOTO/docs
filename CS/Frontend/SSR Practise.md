@@ -190,9 +190,9 @@ app.mount(document.getElementById('root'));
 
 问题的实质是开发调试模式的选型，这里有两种可行的方案，各有优劣：
 
-1.  使用我们自己的服务器，这其实要求我们重新实现一个webpack-dev-server或者vite-dev-server。对于webpack，我们可以参考webpack-dev-server的实现并复用其中的webpack-dev-middleware和webpack-hot-middleware；对于vite，由于vite提供了一个middleware模式，要轻松一点（真的只有一点）。这种方案的优势在于能够获得完全的控制权，例如提前创建好memfs，然后分别提供给构建三个入口的compiler，同时中间件的顺序和行为都是可控的，问题2和3都迎刃而解了；其缺点在于比较考验团队的技术力和人力，我这里三言两语，真要实现出与webpack-dev-server相当的效果也不容易，devServer还有很多其他的问题要考虑，比如静态资源的部署、publicPath、history fallback、proxy等等。vite官方的SSR示例采用了这种方案，~虽然官方demo写得也是乱七八糟的~；
+1.  使用我们自己的服务器，这其实要求我们重新实现一个webpack-dev-server或者vite-dev-server。对于webpack，我们可以参考webpack-dev-server的实现并复用其中的webpack-dev-middleware和webpack-hot-middleware；对于vite，由于vite提供了一个middleware模式，要轻松一点（真的只有一点）。这种方案的优势在于能够获得完全的控制权，例如提前创建好memfs，然后分别提供给构建三个入口的compiler，同时中间件的顺序和行为都是可控的，问题2和3都迎刃而解了；其缺点在于比较考验团队的技术力和人力，我这里三言两语，真要实现出与webpack-dev-server相当的效果也不容易，devServer还有很多其他的问题要考虑，比如静态资源的部署、publicPath、history fallback、proxy等等。vite官方的SSR示例采用了这种方案，~~虽然官方demo写得也是乱七八糟的~~；
 
-2.  使用构建工具提供的服务器，在原有`clientApp`开发服务器的基础上，放弃`server`的HMR，仅考虑`serverApp`。我们可以借助构建工具的配置选项，将构建后memfs中的`serverApp`以中间件的形式注入到开发服务器中，在webpack@5中可用的配置选项有`devServer.setupMiddleware`，在vite中是`vite.middleware.use`。这种方案的优势是较为简单，并且适合迁移已有的配置，在模板应用中我采用的就是这种方案；其缺点自然是不便调试`server`代码。
+2.  使用构建工具提供的服务器，在原有`clientApp`开发服务器的基础上，放弃`server`的HMR，仅考虑`serverApp`。我们可以借助构建工具的配置选项，将构建后memfs中的`serverApp`以中间件的形式注入到开发服务器中，在webpack\@5中可用的配置选项有`devServer.setupMiddleware`，在vite中是`vite.middleware.use`。这种方案的优势是较为简单，并且适合迁移已有的配置，在模板应用中我采用的就是这种方案；其缺点自然是不便调试`server`代码。
 
     ```js
     const createDevSSRMiddleware = (devServer) => (req, res) => {
@@ -393,7 +393,7 @@ const createStream = (res: Response) => new Writable({
 
 2.  和1的原因一致，由于无法修改HTML文档流的尾部，我们原本嵌入到文档末尾的`<script>`便有点不知道该放到哪里了，React似乎也考虑到了这个问题，于是他们在`renderToPipableStream`的选项中添加了一个`bootstapScripts`属性，然而这个选项对常常要使用工具构建并且带有版本hash（因为要考虑生产回滚和客户端缓存）的应用来说实在显得幼稚……看起来React团队的目标是“to make it so that you don't have to manually inject script tags into the stream and that React just does all of that out of the box.”
 
-3.  以页面为单元进行数据预取的概念已经名存实亡了。现在的数据获取逻辑分散在各个渲染单元内部独立进行，我们之前的`prefetch`架构需要做出调整~直接废稿~，不过这倒不是坏事。
+3.  以页面为单元进行数据预取的概念已经名存实亡了。现在的数据获取逻辑分散在各个渲染单元内部独立进行，我们之前的`prefetch`架构需要做出调整~~直接废稿~~，不过这倒不是坏事。
 
 4.  问题1的Library Upgrade Guide中还有一些关于`defer`、`async`和`preload`的内容，这里不做赘述了。
 

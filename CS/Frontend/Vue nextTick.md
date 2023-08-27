@@ -140,5 +140,3 @@ Vue中的`nextTick`与`process.nextTick`的区别在于，它的实现曾经在�
 中期Vue尝试过宏任务实现或者微/宏任务混用的策略，宏任务的问题就更明显了，根据浏览器时间循环，每个Task执行完都有一个微任务检查点和一次Update the Rendering的机会，很可能由于宏任务的低优先级出现样式闪烁。
 
 现在`nextTick`的[实现](https://github.com/vuejs/vue/blob/main/src/core/util/next-tick.ts)已经稳定在微任务版本，只有需要fallback的时候才会切换到宏任务。并且对事件回调做了[特殊处理](https://github.com/vuejs/vue/blob/main/src/platforms/web/runtime/modules/events.ts#L56)，让事件回调只可能被它`attach`之后才产生的事件触发，这就避免了刚才被触发两次的问题。
-
-

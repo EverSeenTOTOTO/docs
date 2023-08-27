@@ -1,6 +1,6 @@
 # xv6小记
 
-MIT开放的课程[CS6.S081](https://pdos.csail.mit.edu/6.828/2021/index.html)围绕他们自己实现的教学用操作系统xv6-riscv来讲述操作系统设计的方方面面，这里是一些课程笔记。我并没有观看课程视频，~因为板书和录音太鬼畜了~，主要看的是xv6-riscv手册和课程notes，配合《OSTEP》食用更佳。
+MIT开放的课程[CS6.S081](https://pdos.csail.mit.edu/6.828/2021/index.html)围绕他们自己实现的教学用操作系统xv6-riscv来讲述操作系统设计的方方面面，这里是一些课程笔记。我并没有观看课程视频，~~因为板书和录音太鬼畜了~~，主要看的是xv6-riscv手册和课程notes，配合《OSTEP》食用更佳。
 
 ## 进程间切换
 
@@ -176,15 +176,15 @@ void wakeup(void *chan) {
 
 ## xv6的文件系统架构
 
-| layer | description |
-| ---- | ---- |
-| File descriptor | The file descriptor layer abstracts many Unix resources using the file system interface, simplifying the lives of application programmers. |
-| Pathname | The pathname layer provides hierarchical path names like `/usr/rtm/xv6/fs.c`, and resolves them with recursive lookup. |
-| Directory | The directory layer implements each directory as a special kind of inode whose content is a sequence of directory entries, each of which contains a file’s name and i-number. |
-| Inode | The inode layer provides individual files, each represented as an inode with a unique i-number and some blocks holding the file’s data. |
-| Logging | The logging layer allows higher layers to wrap updates to several blocks in a transaction, and ensures that the blocks are updated atomically in the face of crashes. |
-| Buffer cache | The buffer cache layer caches disk blocks and synchronizes access to them, making sure that only one kernel process at a time can modify the data stored in any particular block. |
-| Disk | The disk layer reads and writes blocks on an virtio hard drive. |
+| layer           | description                                                                                                                                                                       |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File descriptor | The file descriptor layer abstracts many Unix resources using the file system interface, simplifying the lives of application programmers.                                        |
+| Pathname        | The pathname layer provides hierarchical path names like `/usr/rtm/xv6/fs.c`, and resolves them with recursive lookup.                                                            |
+| Directory       | The directory layer implements each directory as a special kind of inode whose content is a sequence of directory entries, each of which contains a file’s name and i-number.     |
+| Inode           | The inode layer provides individual files, each represented as an inode with a unique i-number and some blocks holding the file’s data.                                           |
+| Logging         | The logging layer allows higher layers to wrap updates to several blocks in a transaction, and ensures that the blocks are updated atomically in the face of crashes.             |
+| Buffer cache    | The buffer cache layer caches disk blocks and synchronizes access to them, making sure that only one kernel process at a time can modify the data stored in any particular block. |
+| Disk            | The disk layer reads and writes blocks on an virtio hard drive.                                                                                                                   |
 
 疑问：如果在日志写入期间磁盘发生错误怎么办？
 

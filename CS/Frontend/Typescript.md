@@ -290,7 +290,7 @@ type l = 'str'['length']; // number, not 3
 
 很容易看出TS类型系统和集合论的关联，`never`对应∅，`unknown`对应全集，联合类型对应集合的并，交叉类型对应集合的交……
 
-> `any`只是TS对JS的妥协，为了方便JS到TS的迁移~抢占市场~，设计一个`any`类型混合了`unknown`和`never`的特点，所有的类型都可以赋给`any`，此时`any`表现如`unknown`；`any`也可以赋值给所有类型，此时`any`表现如`never`。
+> `any`只是TS对JS的妥协，为了方便JS到TS的迁移~~抢占市场~~，设计一个`any`类型混合了`unknown`和`never`的特点，所有的类型都可以赋给`any`，此时`any`表现如`unknown`；`any`也可以赋值给所有类型，此时`any`表现如`never`。
 
 下面的`foo`而`bar`都代表了具有相应形状的所有对象的集合，`union`对对象的要求放松了，`intersect`则收紧，因此我们把`foo`理解成`union`的子类型（子集），`intersect`理解成`foo`的子类型。
 

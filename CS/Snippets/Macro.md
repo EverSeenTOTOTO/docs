@@ -184,7 +184,7 @@ When the identifier appears as a `set!` target, the entire `set!` expression is 
 (fib 10) ; 89
 ```
 
-我猜你可能像~机智的~我一样首先想到下面这样的写法：
+我猜你可能像~~机智的~~我一样首先想到下面这样的写法：
 
 ```scheme
 (define-syntax fib

@@ -2,5 +2,10 @@
   "presets": [
     "remark-preset-lint-recommended",
     "remark-preset-lint-consistent"
+  ],
+  "plugins": [
+    "remark-gfm",
+    "remark-math",
+    "remark-directive"
   ]
 }

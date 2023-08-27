@@ -4,7 +4,7 @@
 (Warning: call-with-current-continuation is weird.)[^3]
 :::
 
-[^3]: https://www.cs.utexas.edu/ftp/garbage/cs345/schintro-v14/schintro_75.html#SEC82
+[^3]: <https://www.cs.utexas.edu/ftp/garbage/cs345/schintro-v14/schintro_75.html#SEC82>
 
 ## 理解延续
 
@@ -16,7 +16,7 @@
 摘自wiki：When a continuation object is applied to an argument, the existing continuation is eliminated and the applied continuation is restored in its place, so that the program flow will continue at the point at which the continuation was captured and the argument of the continuation then becomes the "return value" of the call/cc invocation. Continuations created with call/cc may be called more than once, and even from outside the dynamic extent of the call/cc application.
 :::
 
-[^1]: https://docs.racket-lang.org/reference/cont.html
+[^1]: <https://docs.racket-lang.org/reference/cont.html>
 
 这么说还是很抽象，让我们从实际代码出发来理解continuation：
 
@@ -42,7 +42,7 @@
       (start start))
     ```
 
-    第一行定义的函数`cc`是使用延续编写程序的一个常用技巧，由`(cc cc)`可知它将延续自己作为延续的参数来调用延续。因而我们有了一种捕获当前延续并且传递到`call/cc`外面去的方式。它甚至可以写得更简短~更有逼格~：
+    第一行定义的函数`cc`是使用延续编写程序的一个常用技巧，由`(cc cc)`可知它将延续自己作为延续的参数来调用延续。因而我们有了一种捕获当前延续并且传递到`call/cc`外面去的方式。它甚至可以写得更简短~~更有逼格~~：
 
     ```scheme
     (define (cc) (call/cc (λ (cc) (call/cc cc))))
@@ -87,7 +87,7 @@
 
 4.  实现协程[^2]
 
-    [^2]: https://matt.might.net/articles/programming-with-continuations--exceptions-backtracking-search-threads-generators-coroutines/
+    [^2]: <https://matt.might.net/articles/programming-with-continuations--exceptions-backtracking-search-threads-generators-coroutines/>
 
     到这里你也许发现，`(cc value)`的语义和`return`、`break`、`yield`、`catch`有些交集。延续可以被用于实现包括回溯、协程、异常处理在内的几乎所有程序控制流。下面我们模拟一个生成器（Generator）。使用延续来挂起函数，调用`yield`将程序控制权交给调用者并传递一个值。
 
@@ -99,7 +99,7 @@
                              (yield i))))
     ```
 
-    如果这时候我们调用`(gen println)`，它会打印1~3，但这不是我们想要的，我们期望`gen`是某种初始化函数，第一次调用之后，它返回一个可以被连续调用的函数，这个函数才是真正的`generator`。也就是说我们的调用方式大致像这样：
+    如果这时候我们调用`(gen println)`，它会打印1\~3，但这不是我们想要的，我们期望`gen`是某种初始化函数，第一次调用之后，它返回一个可以被连续调用的函数，这个函数才是真正的`generator`。也就是说我们的调用方式大致像这样：
 
     ```scheme
     (define g (gen))
@@ -294,6 +294,6 @@ function evalCallCC(expr, env, cont) {
 
 如果不是使用求值器，而是常规的编译到中间码乃至机器码的流程，对延续的处理要困难得多，我在这里[^5]看到过一些内容，但没有亲自实践。
 
-[^4]: https://lisperator.net/pltut/cps-evaluator/stack-guard
+[^4]: <https://lisperator.net/pltut/cps-evaluator/stack-guard>
 
-[^5]: https://www.cs.utexas.edu/ftp/garbage/cs345/schintro-v14/schintro_127.html#SEC171
+[^5]: <https://www.cs.utexas.edu/ftp/garbage/cs345/schintro-v14/schintro_127.html#SEC171>

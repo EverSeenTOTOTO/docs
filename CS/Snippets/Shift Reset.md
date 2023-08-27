@@ -2,7 +2,7 @@
 
 如果不指定捕获的边界，`call/cc`捕获的延续称为Undelimited Continuation，[CPS](./CPS.md)一文的第三个例子其实揭示了Undelimited Continuation的一些缺陷[^link]。
 
-[^link]: https://okmij.org/ftp/continuations/against-callcc.html
+[^link]: <https://okmij.org/ftp/continuations/against-callcc.html>
 
 ```scheme
 (define k null)

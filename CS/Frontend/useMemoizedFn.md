@@ -43,10 +43,8 @@ const Demo = () => {
 
 如前文所述，当我们点击按钮调用`setCountNaive`或`setCountWithDep`的时候，`count`会不断累加，触发`Demo`的渲染，间接导致三个`TestBtn`重新渲染，由于`TestBtn`被`React.memo`包裹，因此实际只有`setCountNaive`、`setCountWithDep`所属的`TestBtn`会重绘并在控制台打印：
 
-```
-rerender: Inc
-rerender: IncWithDep
-```
+    rerender: Inc
+    rerender: IncWithDep
 
 假如点击`setCountNoDep`，由于函数实例化时捕获的`count`为`0`，因此它只会不断地将`count`设置为`1`。这不是我们想要的，有没有什么方法，能够既保证函数对象不变，又能保证函数执行时访问到的状态总是最新的呢？其实很简单，涉及到“不变”的时候通常会用到`useRef`或者其他绕过浅比较的机制，这里我们只需要将`setCountNaive`用`ref`包裹，真正返回的是一个提取`ref.current`进行调用的包裹方法，再将这个方法用`useCallback`记住，ahooks 中的`useMemoizedFn`正是这样实现的：
 
