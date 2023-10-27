@@ -18,7 +18,6 @@
 *   The fastest code is the code you don't execute.
 *   In academia, everyone is smart and some of them are nice. In the private sector, everyone is nice and some of them are smart.
 *   Relaxing a requirement should be a compatible change. Strengthening a promise should be a compatible change.
-*   Many programmers are afraid to share work they’ve only just started because it means peers will see their mistakes and know the author of the code is not a genius. （Software Engineering at Google）
 *   地图的最大部分一定是未知领域。（扎克伯格）
 *   Talk is not cheap. Talk can be powerful.（王垠：很多人被“成果”或者代码所蒙蔽，而忽略了那些能够看透问题，用简单的几句话指出正确方向的人。）
 *   The classroom is a wonderful, if artificial, place: Your professor gets paid to pay attention to your ideas, and your classmates are paying to pay attention to your ideas. Never again in your life will you have such a captive audience. Soon after, you learn that most of the world doesn’t necessarily care about what you think.
@@ -37,3 +36,15 @@
 *   $\int_{\text{birth}}^{\text{death}} \text{study}dt = \text{life}$.
 *   归根结底，博客、播客、短视频都是一个人表达自己的地方，是他们用数字形式说 “这就是我” 的方式。
 *   知识是以分形的方式扩展的，从远处看，边缘看起来很平滑，但是一旦你学得足够多以接近它们，你会发现它们其实充满了缺口。（你的大脑希望忽视这些缺口，以便构建一个更简单的世界模型。）
+*   除了死亡、税收和短暂的移动应用生命，没有什么是确定的。
+*   Many programmers are afraid to share work they’ve only just started because it means peers will see their mistakes and know the author of the code is not a genius. 
+* 在内心深处，许多工程师暗中希望被视为天才。这种幻想是这样的：
+
+   * 你会被一个了不起的新概念所震撼。
+   * 你消失数周或数月躲在洞穴中，努力实现你的理想。
+   * 然后在世界上“发布”你的软件，用你的天才震撼每个人。
+   * 你的同龄人对你的聪明感到惊叹。
+   * 人们排队使用你的软件。
+   * 名利自然随之而来。
+
+    >《Software Engineering at Google》

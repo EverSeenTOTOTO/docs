@@ -118,7 +118,7 @@ type div<lhs extends uint, rhs extends uint> = div_helper<lhs, rhs, _0>[0];
 type mod<lhs extends uint, rhs extends uint> = div_helper<lhs, rhs, _0>[1];
 ```
 
-:::warn
+:::warning
 如果用较大的数进行测试的话编译器可能无法给出结果，因为这些实现大量运用了递归。而ts类型编译器支持的递归深度是有限制的，据说早期是44层左右，现在是999层。
 极端情况可能导致tsserver无响应。
 :::

@@ -14,7 +14,7 @@ git clone分为两种方式，http 或者 ssh：
 
 对于Windows用户，要使用socks5代理却没有 nc 的，可以将`ProxyCommand nc -v -x 127.0.0.1:1080 %h %p` 换成`ProxyCommand connect -S 127.0.0.1:1080 %h %p`。
 
-:::warn
+:::warning
 `nc`有几个不同的版本，命令参数有很大差异，例如`ncat`的设置代理方式是`--proxy`而非`-x`，并且代理不能设置为`localhost`，必须写明`127.0.0.1`，否则会连接失败。
 :::
 

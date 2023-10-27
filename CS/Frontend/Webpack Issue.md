@@ -43,17 +43,19 @@ Cannot convert undefined or null to object
 
 真实情况当然要复杂很多，上面给出的`output.chunkFilename`其实是`@vue/cli@3`的默认配置，我们有一个项目模板基于`@vue/cli@3`，某业务开发团队同事使用该项目模板时遭遇此问题，提交Issue之后我感到非常奇怪，因为这个模板已经存在很久了一直蛮正常的，我自己现场克隆仓库也没复现问题。于是和该同事沟通确实能100%复现并给了个分支给我们，对方拉取模板之后作了一些变更，但只是写了些业务代码，也没有动过构建配置，看起来和其他使用该模板的应用别无二致。那就没什么办法了，先用`git bitsect`和“控制变量法”找到最早出问题的变更，比对更改，各种尝试大致推断出和某模块引入与否（其实是代码规模）有关，再根据报错信息尝试去找Webpack中出错的源头，然而`Cannot convert undefined or null to object`甚至不是Webpack源码的一部分，而是JS的一个常见报错，比如`Object.keys(undefined)`。这种情况下只有从Webpack的统计信息查起，以`webpack/lib/Stats.js`为起点通过打印日志一点点往上找，在`stats.toJson`函数适当位置添加`console.log(compilation.errors)`才算有了点眉目，原始的报错堆栈其实是这样：
 
-    ChunkRenderError: Cannot convert undefined or null to object
-        at Compilation.createHash (/node_modules/webpack/lib/Compilation.js:1981:22)
-        at /node_modules/webpack/lib/Compilation.js:1386:9
-        at AsyncSeriesHook.eval [as callAsync] (eval at create (/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:6:1)
-        at AsyncSeriesHook.lazyCompileHook (/node_modules/tapable/lib/Hook.js:154:20)
-        at Compilation.seal (/node_modules/webpack/lib/Compilation.js:1342:27)
-        at /node_modules/webpack/lib/Compiler.js:675:18
-        at /node_modules/webpack/lib/Compilation.js:1261:4
-        at AsyncSeriesHook.eval [as callAsync] (eval at create (/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:15:1)
-        at AsyncSeriesHook.lazyCompileHook (/node_modules/tapable/lib/Hook.js:154:20)
-        at Compilation.finish (/node_modules/webpack/lib/Compilation.js:1253:28)
+```
+ChunkRenderError: Cannot convert undefined or null to object
+    at Compilation.createHash (/node_modules/webpack/lib/Compilation.js:1981:22)
+    at /node_modules/webpack/lib/Compilation.js:1386:9
+    at AsyncSeriesHook.eval [as callAsync] (eval at create (/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:6:1)
+    at AsyncSeriesHook.lazyCompileHook (/node_modules/tapable/lib/Hook.js:154:20)
+    at Compilation.seal (/node_modules/webpack/lib/Compilation.js:1342:27)
+    at /node_modules/webpack/lib/Compiler.js:675:18
+    at /node_modules/webpack/lib/Compilation.js:1261:4
+    at AsyncSeriesHook.eval [as callAsync] (eval at create (/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:15:1)
+    at AsyncSeriesHook.lazyCompileHook (/node_modules/tapable/lib/Hook.js:154:20)
+    at Compilation.finish (/node_modules/webpack/lib/Compilation.js:1253:28)
+```
 
 从`Compilation.createHash`开始将添加打印日志和盲猜出错可能并修改配置验证结合起来，又过去很长时间，中途一度自闭到想放弃，应该说最终能找出问题本质有很大的运气成分，也多亏Webpack源码没有压缩混淆。Issue上我给出的复盘如下：
 

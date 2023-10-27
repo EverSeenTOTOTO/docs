@@ -1,6 +1,6 @@
 # 延续传递风格
 
-:::warn
+::: warning
 (Warning: call-with-current-continuation is weird.)[^3]
 :::
 

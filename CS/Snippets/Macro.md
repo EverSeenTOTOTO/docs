@@ -326,7 +326,7 @@ fn main() {
 
 在Typescript中，时常和装饰器一起使用的，是reflect-metadata这个库，它提供了操作元信息的能力。下面有一个属性装饰器的例子，`@nothrow()`的功能是让函数不会抛出错误。实现思路其实很简单，利用`Reflect.defineMetadata`在目标函数上存放一些元信息，构造实例的时候，利用`Reflect.getMetadata`取出元信息，然后用魔改后的方法覆盖实例上原有的方法：
 
-:::warn
+:::warning
 这个例子构建时使用到了@babel/plugin-proposal-decorators，配置的`version`参数是默认的`"2018-09"`。由于装饰器还没有形成稳定的标准，API可能有些变化。
 :::
 

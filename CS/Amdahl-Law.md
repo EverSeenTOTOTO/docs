@@ -1,4 +1,4 @@
-# Amdahl定律\[^link]
+# Amdahl定律[^link]
 
 [^link]: 《深入理解计算机系统（第三版)》$P_{16}$
 

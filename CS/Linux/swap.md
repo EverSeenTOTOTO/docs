@@ -23,9 +23,11 @@ rm swap
 
 `free -h`的输出类似：
 
-                   total        used        free      shared  buff/cache   available
-    内存：       15Gi       1.7Gi        11Gi       377Mi       2.7Gi        13Gi
-    交换：       34Gi       2.4Gi        32Gi
+```
+           total        used        free      shared  buff/cache   available
+内存：       15Gi       1.7Gi        11Gi       377Mi       2.7Gi        13Gi
+交换：       34Gi       2.4Gi        32Gi
+```
 
 `dd`命令用于从一个输入流`if`转换到输出流`of`，不提供参数时为标准输入输出。而`/dev/zero`会无穷尽地提供空字符，常被用来初始化固定大小的数据存储。
 
