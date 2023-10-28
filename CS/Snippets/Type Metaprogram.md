@@ -47,7 +47,7 @@ type _8 = next<_7>;
 type _9 = next<_8>;
 ```
 
-:::Info
+:::info
 留意`is_same`，利用了判断两个集合相等的手法。不过这个实现有个缺点是`is_same<boolean, boolean>`得到的不是`true`，而是`boolean`，根因是条件类型的Distributive特性。
 :::
 
@@ -64,7 +64,7 @@ type add<lhs extends uint, rhs extends uint> = is_same<lhs, _0> extends false
 
 <img src="./add.webp" style="widht: 800px" />
 
-:::Info
+:::info
 你也许也注意到了，`add`的实现隐含了函数的概念，但这里的函数类型并不是`() => void`这类，后者是对运行时js函数的类型描述。而我们这里的函数是以泛型类型的形式出现的，泛型参数即函数参数，函数应用（apply）即类型推导，返回的结果依然是一个类型。在类型元编程的时候变量就是类型本身。
 :::
 
@@ -332,7 +332,7 @@ struct map<L<Args...>, F<_>> {
 };
 ```
 
-:::Info
+:::info
 可以把`typename X::type`理解成函数调用`X()`，当前实现的`concat`只支持`concat<List, List>`作为入参，返回`List`，即`concat`的类型是`(List, List) -> List`，
 应考虑设计为`(List, List) -> () -> List`甚至`(() -> List, () -> List) -> () -> List`，在使用者调用`using X = <balabala>`构造了复杂的类型之后，直到`X::type`才真正推导其类型，而过程中各种中间类型始终都保持为类似元函数的形式，包括`X`。这样也可以加快编译速度。
 
@@ -484,7 +484,7 @@ cout << add << endl; // ((x + y) + 2)
 
 类似的再实现`sub_expr`、`mul_expr`、`pow_expr`等，其余的初等函数读者可以自行拓展。需要注意的是幂函数`pow_expr`，由于只讨论基本初等函数，要避免`x ^ x`的情况，可利用模板偏特化的一个常用技巧`enable_if`。在下面的实现中`pow_expr`有三个模板参数，第三个本身无实际意义，但是在重载运算符`^`的时候需要借助它来避免`Lhs`和`Rhs`都是`expr`的情况：
 
-:::Info
+:::info
 和`enable_if`相似的技巧还有`tag dispatch`、`if constexpr`等。其本质是c++的[SFINAE](https://en.cppreference.com/w/cpp/language/sfinae)特性。
 :::
 
@@ -515,7 +515,7 @@ auto foo = 3 ^ x;
 auto foo = x ^ x; // error: no type named ‘type’ in ‘struct std::enable_if<false, void>’
 ```
 
-:::Info
+:::info
 此外在使用`^`时要记得带上括号，因为c++中`^`默认不是power的语义，需要避免因运算符优先级导致的问题。
 :::
 

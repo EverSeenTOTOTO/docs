@@ -1,4 +1,4 @@
-# Software Design for Flexibility <Badge type="warning" text="WIP" />
+# Software Design for Flexibility <Badge type="warning" text="施工中" />
 
 听说是《SICP》的精神续作，重点是出版于2021年，很新。半年前就说想看，今天终于开始了。
 

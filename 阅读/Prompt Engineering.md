@@ -1,4 +1,4 @@
-# Prompt Engineering <Badge type="warning" text="WIP" />
+# Prompt Engineering <Badge type="warning" text="施工中" />
 
 Prompt工程有关资料的阅读笔记。
 
