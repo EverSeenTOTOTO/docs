@@ -590,15 +590,15 @@ struct equation: expr {
 
 在placeholder的实现中添加重载运算符`=`的代码：
 
-```diff
+```cpp
 template<char Name>
 struct placeholder: expr {
   static constexpr char name = Name;
 
-+  template<typename Val>
-+  auto operator=(Val val) const {
-+    return equation<Name, Val> { val };
-+  }
+  template<typename Val> // [!code  ++]
+  auto operator=(Val val) const { // [!code  ++]
+    return equation<Name, Val> { val }; // [!code  ++]
+  } // [!code  ++]
 
   friend std::ostream& operator<<(std::ostream& out, placeholder<Name> const& ph) {
     return out << ph.name;
@@ -615,7 +615,7 @@ cout << t << endl; // (x = 2)
 
 随后在所有的表达式中添加`operator()`的实现，我们模仿标准库，使用一个`std::invoke`来进行运算，而表达式里面的`operator()`只是简单调用下我们自制的`invoke`函数。以placeholder为例，单个的placeholder表达式等价于`f(x) = x`函数：
 
-```diff
+```cpp
 template<char Name>
 struct placeholder: expr {
   static constexpr char name = Name;
@@ -625,10 +625,10 @@ struct placeholder: expr {
     return equation<Name, Val> { val };
   }
 
-+   template<typename ...Args>
-+   auto operator()(Args... args) const {
-+     return invoke(*this, args...);
-+   }
+  template<typename ...Args> // [!code ++]
+  auto operator()(Args... args) const { // [!code ++]
+    return invoke(*this, args...); // [!code ++]
+  } // [!code ++]
 
   friend std::ostream& operator<<(std::ostream& out, placeholder<Name> const& ph) {
     return out << ph.name;
@@ -807,25 +807,25 @@ type foo = evaluate<app<lambda<x, x>, lit<_2>>, empty_env>;
 
 让我们拓展`evaluate`，在新的语言中再次实现加法，可以联动先前的加法与现在的加法（以及上文c++例子中的加法），并应注意到新的语言（lambda演算）是支持函数作为一等公民的：
 
-```diff
+```cpp
 // (+ Lhs Rhs)
-+ export type add_expr<Lhs, Rhs> = { __add_expr__ : [Lhs, Rhs] };
+export type add_expr<Lhs, Rhs> = { __add_expr__ : [Lhs, Rhs] }; // [!code ++]
 
-+ export type eval_add<T, Env> = T extends add_expr<infer TL, infer TR>
-+   ? evaluate<TL, Env> extends infer Lhs
-+     ? evaluate<TR, Env> extends infer Rhs
-+       ? Lhs extends uint
-+         ? Rhs extends uint
-+           ? is_same<Lhs, never> extends false
-+             ? is_same<Rhs, never> extends false
-+               ? add<Lhs, Rhs>
-+               : never
-+             : never
-+           : never
-+         : never
-+       : never
-+     : never
-+   : never;
+export type eval_add<T, Env> = T extends add_expr<infer TL, infer TR> // [!code ++]
+  ? evaluate<TL, Env> extends infer Lhs // [!code ++]
+    ? evaluate<TR, Env> extends infer Rhs // [!code ++]
+      ? Lhs extends uint // [!code ++]
+        ? Rhs extends uint // [!code ++]
+          ? is_same<Lhs, never> extends false // [!code ++]
+            ? is_same<Rhs, never> extends false // [!code ++]
+              ? add<Lhs, Rhs> // [!code ++]
+              : never // [!code ++]
+            : never // [!code ++]
+          : never // [!code ++]
+        : never // [!code ++]
+      : never // [!code ++]
+    : never // [!code ++]
+  : never; // [!code ++]
 
 export type evaluate<T, Env> = match<T, [
   [lit<any>, eval_lit<T>],

@@ -41,12 +41,7 @@ const genSideBarHelper = (prefix: string, filepath: string) => {
   const kids = fs.readdirSync(path.join('.', newPrefix));
   const mds = kids.filter(isMd);
 
-  const items = mds.map(md => {
-    return {
-      text: md,
-      link: `${newPrefix}/${md}`
-    }
-  })
+  const items: any[] = [];
 
   for (const dir of kids) {
     if (isDir(path.join('.', newPrefix, dir))) {
@@ -56,9 +51,17 @@ const genSideBarHelper = (prefix: string, filepath: string) => {
     }
   }
 
+  items.push(...mds.map(md => {
+    return {
+      text: md,
+      link: `${newPrefix}/${md}`
+    }
+  }))
+
   return {
     text: filepath,
-    items
+    items,
+    collapsed: true
   };
 }
 
@@ -66,13 +69,18 @@ const genSideBar = (nav: { text: string }[]) => {
   return nav.map(({ text }) => {
     return {
       text,
-      items: genSideBarHelper(`/${text}`, '')?.items
+      items: genSideBarHelper(`/${text}`, '')?.items,
+      collapsed: true,
     }
   })
 }
 
 const nav = genNav();
 const sidebar = genSideBar(nav);
+
+if (sidebar?.[0]) {
+  sidebar[0].collapsed = false;
+}
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -89,7 +97,24 @@ export default defineConfig({
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/EverSeenTOTOTO' }
-    ]
+    ],
+
+    lastUpdated: {
+      text: '最近更新于',
+      formatOptions: {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      },
+    },
+
+    docFooter: {
+      prev: '下一篇',
+      next: '上一篇'
+    },
+
+    search: {
+      provider: 'local'
+    }
   },
   markdown: {
     math: true,

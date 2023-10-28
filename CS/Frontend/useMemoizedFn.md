@@ -60,7 +60,7 @@ const useSmartCallback = <T, P>(fn: (...params: P[]) => T) => {
 }
 ```
 
-```diff
+```tsx
 export default () => {
   const [count, setCount] = useState(0);
 
@@ -71,15 +71,15 @@ export default () => {
   const setCountWithDep = useCallback(() => {
     setCount(count + 1);
   }, [count]);
-+  const setCountSmart = useSmartCallback(() => {
-+    setCount(count + 1);
-+  });
+  const setCountSmart = useSmartCallback(() => { // [!code ++]
+    setCount(count + 1) // [!code ++];
+  }) // [!code ++];
 
   return <div>
     <TestBtn onClick={setCountNaive}>Inc</TestBtn>
     <TestBtn onClick={setCountNoDep}>IncNoDep</TestBtn>
     <TestBtn onClick={setCountWithDep}>IncWithDep</TestBtn>
-+    <TestBtn onClick={setCountSmart}>IncSmart</TestBtn>
+    <TestBtn onClick={setCountSmart}>IncSmart</TestBtn> // [!code ++]
     <div>
       {count}
     </div>

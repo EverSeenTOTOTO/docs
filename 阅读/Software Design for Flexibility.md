@@ -1,4 +1,4 @@
-# Software Design for Flexibility -- How to Avoid Programming Yourself into a Corner
+# Software Design for Flexibility <Badge type="warning" text="WIP" />
 
 听说是《SICP》的精神续作，重点是出版于2021年，很新。半年前就说想看，今天终于开始了。
 
@@ -63,7 +63,7 @@ the data the rules are applied to.
 
 ## Variations on an Arithmetic Theme
 
-这一章看得比较粗略，因为之前使用c++的运算符重载和类型元编程实现过[自动求导](/CS/Type%20Metaprogram.md)，所以大致能揣摩到作者想要表达的点。运算符重载可以看成是给现有语言添加语义的过程，应当做到不改变原有语义。为了实现这一点，文中采用了一种我理解为“广义的模式匹配”的方法，因为从根本上说，我们要做的只是根据输入所具备的某些模式，在示例中表现为是否符合一些predicate，然后进行相应的动作。而这种predicate到action的机制被实现为某种拓展（extension），而原始的系统，则被抽象为一个通用的，根据所安装的拓展进行匹配和分派的控制器。我将其理解为广义的模式匹配，是因为这种机制在很多语言中都可以看到，只是名字不同，例如c++模板中的tag dispatch和偏特化，typescript中的conditional type，racket中宏展开的机制等等。而第四章就是关于Pattern Matching的讨论应该说也印证了我的思路。
+这一章看得比较粗略，因为之前使用c++的运算符重载和类型元编程实现过[自动求导](/CS/Snippets/Type%20Metaprogram.md)，所以大致能揣摩到作者想要表达的点。运算符重载可以看成是给现有语言添加语义的过程，应当做到不改变原有语义。为了实现这一点，文中采用了一种我理解为“广义的模式匹配”的方法，因为从根本上说，我们要做的只是根据输入所具备的某些模式，在示例中表现为是否符合一些predicate，然后进行相应的动作。而这种predicate到action的机制被实现为某种拓展（extension），而原始的系统，则被抽象为一个通用的，根据所安装的拓展进行匹配和分派的控制器。我将其理解为广义的模式匹配，是因为这种机制在很多语言中都可以看到，只是名字不同，例如c++模板中的tag dispatch和偏特化，typescript中的conditional type，racket中宏展开的机制等等。而第四章就是关于Pattern Matching的讨论应该说也印证了我的思路。
 
 ## Pattern Matching
 

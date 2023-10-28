@@ -308,14 +308,14 @@ React、Vue或者Preact的源码为什么难以读懂，很大程度上就是因
 
 首先重写下`VNode`类型，添加一个字段`output`，用于关联该结点编译后的目标产物，例如求值创建的一个真实DOM结点，或者编译出的一组渲染指令等：
 
-```diff
-+ interface VNodeBase<T, Tag extends string> {
-+   tag: Tag,
-+   output?: T
-+ }
+```ts
+interface VNodeBase<T, Tag extends string> { // [!code ++]
+  tag: Tag, // [!code ++]
+  output?: T // [!code ++]
+} // [!code ++]
 
-- export type VNodeButton = { /* ... */ };
-+ export interface VNodeButton<T> extends VNodeBase<T, 'button'> {
+export type VNodeButton = { /* ... */ }; // [!code --]
+export interface VNodeButton<T> extends VNodeBase<T, 'button'> { // [!code ++]
   attr?: {
     style?: AttrStyle,
     onClick?: AttrEvent
@@ -768,7 +768,7 @@ const Foo = () => {
 
 显而易见，这又是一个应该由框架封装的能力，我们将副作用用一个函数包裹，并告知框架在哪些状态变化时才执行之。理解这一点之后，在刚刚绕过`React.useState`的基础上，我们也可以“淘汰”`React.useEffect`自己实现一个低配版：
 
-```diff
+```ts
 let memo: unknown;
 + const changedStates: unknown[] = [];
 
@@ -776,9 +776,9 @@ export function useState<T>(init: T): [T, (value: T) => void] {
   const setState = (state: T) => {
     if (memo !== state) {
       memo = state;
-+      changedStates.push(memo); // collect changed states
-      root.render(<App />);     // trigger rerender
-+      setTimeout(() => changedStates.splice(0, changedStates.length)); // clear after each turn, not safe
+      changedStates.push(memo); // collect changed states // [!code ++]
+      root.render(<App />);     // trigger rerender 
+      setTimeout(() => changedStates.splice(0, changedStates.length)); // clear after each turn, not safe // [!code ++]
     }
   };
 
@@ -840,33 +840,33 @@ const App = () => {
 
 具体实现上可以聪明一点，在创建`VNodeComponent`的时候对`component`做个封装，免得后面用到的地方还要重复处理：
 
-```diff
-+ export type UseStateHookState = { type: 'useState', state: unknown, dirty: boolean };
-+ export type UseEffectHookState = { type: 'useEffect', clearEffect?: () => void };
+```ts
+export type UseStateHookState = { type: 'useState', state: unknown, dirty: boolean }; // [!code ++]
+export type UseEffectHookState = { type: 'useEffect', clearEffect?: () => void }; // [!code ++]
 
 export interface VNodeComponent<T> extends VNodeBase<T, 'component'> {
   vdom?: VNode<T>,
   component: (state?: unknown) => VNode<T>,
   state?: unknown,
-+  hookState: Map<number, UseStateHookState | UseEffectHookState>,
+  hookState: Map<number, UseStateHookState | UseEffectHookState>, // [!code ++]
 }
 
-+ let currentComponent: VNodeComponent;
-+ export const getCurrentComponent = () => currentComponent;
- 
-+ let currentHookId = 0;
-+ export const getCurrentHookId = () => currentHookId++;
+ let currentComponent: VNodeComponent; // [!code ++]
+ export const getCurrentComponent = () => currentComponent; // [!code ++]
+
+ let currentHookId = 0; // [!code ++]
+ export const getCurrentHookId = () => currentHookId++; // [!code ++]
 
 export const h = (component: (state: unknown) => VNode, state?: unknown) => {
   const vnode: VNodeComponent = {
     tag: 'component',
--    component,
-+    component: (s?: unknown) => {
-+      currentComponent = vnode;
-+      currentHookId = 0;
-+      return component(s);
-+    },
-+    hookState: new Map(),
+    component, // [!code --]
+    component: (s?: unknown) => { // [!code ++]
+      currentComponent = vnode; // [!code ++]
+      currentHookId = 0; // [!code ++]
+      return component(s); // [!code ++]
+    }, // [!code ++]
+    hookState: new Map(), // [!code ++]
     state,
   };
   return vnode;

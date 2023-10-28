@@ -25,5 +25,6 @@
     警惕那些人为制造的复杂度（以及制造这些复杂度的人），我们的一生都在与熵增作对抗。在日常中，即使是写demo和草稿也要尽可能认真一点。
 
 ::: info
-[皖ICP备20013181号](https://beian.miit.gov.cn/#/Integrated/index)
+Powered by [Vitepress](https://vitepress.dev/). <br/>
+皖ICP备[20013181](https://beian.miit.gov.cn/#/Integrated/index)号. 
 :::
