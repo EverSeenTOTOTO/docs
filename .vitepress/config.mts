@@ -1,7 +1,8 @@
+import path from 'node:path';
+import fs from 'node:fs';
 import { defineConfig } from 'vitepress'
 import mdFootnote from 'markdown-it-footnote'
-import path from 'path';
-import fs from 'fs';
+import { fileURLToPath, URL } from 'node:url'
 
 const isDir = (filepath: string) => fs.statSync(filepath).isDirectory();
 const isMd = (filepath: string) => /\.(md|markdown)$/i.test(filepath);
@@ -108,18 +109,33 @@ export default defineConfig({
     },
 
     docFooter: {
-      prev: '下一篇',
-      next: '上一篇'
+      prev: '上一篇',
+      next: '下一篇'
     },
 
     search: {
       provider: 'local'
     }
   },
+
   markdown: {
     math: true,
     config(md) {
       md.use(mdFootnote)
     }
+  },
+
+  vite: {
+    resolve: {
+      alias: [
+        {
+          find: /^.*\/VPSidebarItem\.vue$/,
+          replacement: fileURLToPath(
+            new URL('./theme/components/VPSidebarItem.vue', import.meta.url)
+          )
+        }
+      ]
+    }
   }
+
 })
