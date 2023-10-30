@@ -4,13 +4,14 @@ git clone分为两种方式，http 或者 ssh：
 
 ## ssh
 
-通过修改`~/.ssh/config`：
-
-    Host github.com
-        HostName github.com
-        User git
-        # 走 socks5 代理（如 Shadowsocks）
-        ProxyCommand nc -v -x 127.0.0.1:1080 %h %p
+::: code-group
+``` [~/.ssh/config]
+Host github.com
+    HostName github.com
+    User git
+    # 走 socks5 代理（如 Shadowsocks）
+    ProxyCommand nc -v -x 127.0.0.1:1080 %h %p
+```
 
 对于Windows用户，要使用socks5代理却没有 nc 的，可以将`ProxyCommand nc -v -x 127.0.0.1:1080 %h %p` 换成`ProxyCommand connect -S 127.0.0.1:1080 %h %p`。
 

@@ -20,7 +20,7 @@ Racket中基于模式匹配-替换的宏机制，光靠猜也能猜出大致的�
 (my-let ([x 1] [y 2]) (+ x y)) ; 3
 ```
 
-:::info
+:::tip
 `(syntax <template>)`可以简写为`#'<template>`，后文将使用简写的方法，其返回值是一个语法对象`syntax-object`，我将其理解为一个代码片段，包含了一些元信息。这是Racket文档中的介绍：a syntax object associates source-location and lexical-binding information with each part of the form. The source-location information is used when reporting syntax errors, and the lexical-binding information allows the macro system to maintain lexical scope.
 
 从根本上来说，宏转换器只是将一个`syntax-object`转换（tramsform）为另一个`syntax-object`的函数。
@@ -222,7 +222,7 @@ println!("{}", fib!(2)); // error: recursion limit reached while expanding `fib!
 想要在编译阶段完成对`$num-1`和`$num-2`的计算，可以借助过程宏的力量，过程宏在下文介绍，这里给出实现`fib!`的代码。
 
 :::info
-我并没有直接说Rust文本替换的宏系统不能做到编译期计算，因为不知道它是不是图灵完备的，如果是，那总归是有办法实现的，只是非常繁琐。
+这里并未直接说Rust文本替换的宏系统不能做到编译期计算，因为没翻文档不知道它是不是图灵完备的，如果是，那总归是有办法实现的，只是非常繁琐。
 :::
 
 ```rust
@@ -393,7 +393,7 @@ syn分为若干模块，常用的`parse`模块用于解析AST，`visit`和`visit
 
 下面是Rust中实现`nothrow`装饰器的例子。当然，Rust作为强类型语言，我们不能像ts那样随意变更实例上的方法，事实上也不需要那么麻烦，既然我们可以直接操作源码，用立即执行函数（IIFE）将原始的函数体包裹起来就行了：
 
-:::info
+:::tip
 为了获知应该访问哪个结点，结点上有哪些信息，[AST Explorer](https://astexplorer.net/)和syn的文档很有用。
 :::
 

@@ -128,22 +128,20 @@ wget --input-file=wget-list --continue --directory-prefix=$LFS/sources
 
 3.  还有一个大坑和启动时根分区挂载有关，一开始我在grub.cfg里面写入的内核引导参数是`root=/dev/nvme0n1p2`，会导致`kernel panic`，提示找不到`/dev/nvme0n1p2`，换成fs UUID也不行，查了下[grub的文档](https://www.gnu.org/software/grub/manual/grub/html_node/Root-Identifcation-Heuristics.html)以为是在`GRUB_DISABLE_LINUX_PARTUUID`和`GRUB_DISABLE_LINUX_UUID`都默认`false`的情况下，grub采用part UUID而非fs UUID导致的，我提供的是fs UUID。因此可以参考[ArchWiki的文档](https://wiki.archlinux.org/title/Persistent_block_device_naming_\(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87\))调整grub配置参数`GRUB_DISABLE_LINUX_PARTUUID`和`GRUB_DISABLE_LINUX_UUID`，要求使用fs UUID。当然问题不是这个，没有解决。随后猜测是udev的规则不对无法识别到nvme磁盘驱动，拷贝了宿主机`/usr/lib/udev/rules.d`下面的规则过去也不行，并且看了下LFS文档提供的规则是有识别nvme设备的（可以`grep nvme /lib/udev/rules.d`查看）的规则的。又查了很久的文档，结合下面的grub配置宿主机系统和使用宿主机系统内核的LFS系统均能够正常启动的现象，猜测是内核编译的时候没有开启NVME支持，于是尝试通过调整内核构建配置开启nvme相关的配置，依然不行😿……最后索性把宿主机的内核给copy过去了，并且沿用了宿主机内核配套的initrd.img，重启后终于成功进入了LFS的终端界面。白piao虽然开心，没用上自己构建的内核总感觉少了点意思，这里的失败还需要进一步探究。
 
-    :::info
-    后续又折腾了两天，结合使用宿主机内核能进入LFS系统的现象和启动时的一些报错，以`initrd nvme`为关键字搜索终于看到了蛛丝马迹（宿主系统和LFS系统grub.cfg里面kernel参数配置基本一致，宿主系统的initrd.img能够正常挂载根分区，而使用BLFS提供的`mkinitramfs`脚本生成的initrd.img则不能，估计是需要`initrd.img`支持挂载`nvme`根分区啥的。最终使用的是使用BLFS提到的dracut工具去创建`initrd.img`，下面是[dracut](https://mirrors.edge.kernel.org/pub/linux/utils/boot/dracut/dracut.html#_dracut_8)的配置：
+    > 后续又折腾了两天，结合使用宿主机内核能进入LFS系统的现象和启动时的一些报错，以`initrd nvme`为关键字搜索终于看到了蛛丝马迹（宿主系统和LFS系统grub.cfg里面kernel参数配置基本一致，宿主系统的initrd.img能够正常挂载根分区，而使用BLFS提供的`mkinitramfs`脚本生成的initrd.img则不能，估计是需要`initrd.img`支持挂载`nvme`根分区啥的。最终使用的是使用BLFS提到的dracut工具去创建`initrd.img`，下面是[dracut](https://mirrors.edge.kernel.org/pub/linux/utils/boot/dracut/dracut.html#_dracut_8)的配置：
 
-    *   /etc/dracut.conf：
+    > :::code-group
+    > ```bash [/etc/dracut.conf]
+    > hostonly=no
+    > hostonly_cmdline=no
+    > persistent_policy=by-uuid
+    > use_fstab=yes
+    > sysloglvl=3
+    > compress=xz
+    > ```
+    > :::
 
-    ```bash
-    hostonly=no
-    hostonly_cmdline=no
-    persistent_policy=by-uuid
-    use_fstab=yes
-    sysloglvl=3
-    compress=xz
-    ```
-
-    使用`dracut --kver 5.16.12 -c /etc/dracut.conf  -f`生成inird.img并且拷贝到`/boot`文件夹里面去。再重启就可以进入LFS系统了，这时候使用的是自己编译的内核，舒服。
-    :::
+    > 使用`dracut --kver 5.16.12 -c /etc/dracut.conf  -f`生成inird.img并且拷贝到`/boot`文件夹里面去。再重启就可以进入LFS系统了，这时候使用的是自己编译的内核，舒服。
 
 4.  最后是我的grub.cfg，参考[ArchWiki的文档](https://wiki.archlinux.org/title/GRUB_\(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87\)#%E7%94%9F%E6%88%90%E4%B8%BB%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6)编写，中途为了找出根分区挂载不上的问题添加了很多调试参数，LFS文档太浅显了……下面的`Pop OS`是原有的宿主系统，在第四个分区`/dev/nvme0n1p4`所以`set root=(hd0,4)`：
 

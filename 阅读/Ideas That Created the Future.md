@@ -1,1 +1,1 @@
-# Ideas That Created the Future <Badge type="warning" text="施工中" />
+# Ideas That Created the Future <Badge type="tip" text="TODO" />

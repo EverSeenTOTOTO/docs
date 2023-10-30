@@ -1,4 +1,4 @@
-# [^link] On Agnostic Truth
+# [^link] On Agnostic Truth <Badge type="danger" text="偷偷转载" />
 
 [^link]: <http://www.spronck.net/agnostictruth.html>
 

@@ -2,24 +2,22 @@
 
 一个有关External配置的BUG，综合性挺强，我花了整整一个下午才找到问题的根源。找出原因之后可以用如下简化的`main.js`文件及`webpack.config.js`复现问题：
 
-*   main.js
+::: code-group
+```js [main.js]
+import('./lazy')
+```
 
-    ```js
-    import('./lazy')
-    ```
-
-*   webpack.config.js
-
-    ```js
-    module.exports = {
-      mode: 'development',
-      entry: './main.js',
-      output: {
-        chunkFilename: '[name].[contenthash:8].js'
-      },
-      externals: /lazy/,
-    }
-    ```
+```js [webpack.config.js]
+module.exports = {
+  mode: 'development',
+  entry: './main.js',
+  output: {
+    chunkFilename: '[name].[contenthash:8].js'
+  },
+  externals: /lazy/,
+}
+```
+:::
 
 此时进行构建，将得到牛头不对马嘴的报错`Cannot convert undefined or null to object`：
 

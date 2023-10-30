@@ -11,14 +11,11 @@ const isReadmd = (filepath: string) => /^README\.(md|markdown)$/i.test(filepath)
 
 const genNav = () => {
   const kids = fs.readdirSync('.');
-
   const dirs = kids.filter((each: string) => isDir(each) && !isIgnored(each));
 
   return dirs.map((dir: string) => {
     const prefix = path.join('.', dir);
-
     const children = fs.readdirSync(prefix).filter(isMd);
-
     const readme = children.find(isReadmd);
 
     if (readme) {
@@ -42,7 +39,7 @@ const genSideBarHelper = (prefix: string, filepath: string) => {
   const kids = fs.readdirSync(path.join('.', newPrefix));
   const mds = kids.filter(isMd);
 
-  const items: any[] = [];
+  let items: any[] = [];
 
   for (const dir of kids) {
     if (isDir(path.join('.', newPrefix, dir))) {
@@ -58,6 +55,13 @@ const genSideBarHelper = (prefix: string, filepath: string) => {
       link: `${newPrefix}/${md}`
     }
   }))
+
+  items = items.sort((a, b) => {
+    if (isReadmd(a.text)) return -1;
+    if (isReadmd(b.text)) return 1;
+
+    return 0;
+  })
 
   return {
     text: filepath,
@@ -83,13 +87,10 @@ if (sidebar?.[0]) {
   sidebar[0].collapsed = false;
 }
 
-// https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "EverSeenFlash's Home",
   themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
     nav,
-
     sidebar,
 
     footer: {

@@ -46,68 +46,66 @@ export default {
 
 `nextTick`还有一个使用场景是父子组件的状态通信，下面的例子中，如果我们在子组件`this.$emit('click')`之后直接打印父组件传下来的`props`，会发现仍是旧值，但如果用`this.$nextTick`或者其他异步任务，则打印出来的是新值。
 
-*   父组件
+::: code-group
+```html [父组件]
+<script>
+import Demo from './Demo.vue';
 
-    ```html
-    <script>
-    import Demo from './Demo.vue';
+export default {
+  components: {
+    Demo,
+  },
 
-    export default {
-      components: {
-        Demo,
-      },
-
-      data() {
-        return {
-          text: 'blue',
-        };
-      },
-
-      methods: {
-        onClick() {
-          this.text = 'red'; // 监听到子组件click事件后，更新props
-          queueMicrotask(() => {
-            console.log('parent async');
-          });
-        },
-      },
+  data() {
+    return {
+      text: 'blue',
     };
-    </script>
+  },
 
-    <template>
-      <demo
-        :text="text"
-        @click="onClick"
-      />
-    </template>
-    ```
+  methods: {
+    onClick() {
+      this.text = 'red'; // 监听到子组件click事件后，更新props
+      queueMicrotask(() => {
+        console.log('parent async');
+      });
+    },
+  },
+};
+</script>
 
-*   子组件
+<template>
+  <demo
+    :text="text"
+    @click="onClick"
+  />
+</template>
+```
 
-    ```html
-    <script>
-    export default {
-      props: ['text'],
-      emits: ['click'],
+```html [子组件]
+<script>
+export default {
+  props: ['text'],
+  emits: ['click'],
 
-      methods: {
-        onClick() {
-          this.$emit('click');
-          console.log(`child sync: ${this.text}`); // 旧值
+  methods: {
+    onClick() {
+      this.$emit('click');
+      console.log(`child sync: ${this.text}`); // 旧值
 
-          queueMicrotask(() => {
-            console.log(`child async: ${this.text}`); // 新值
-          });
-        },
-      },
-    };
-    </script>
-    <template>
-      <button @click="onClick">
-        {{ text }}
-      </button>
-    </template>
-    ```
+      queueMicrotask(() => {
+        console.log(`child async: ${this.text}`); // 新值
+      });
+    },
+  },
+};
+</script>
+<template>
+  <button @click="onClick">
+    {{ text }}
+  </button>
+</template>
+```
+:::
 
 这说明Vue的双向数据流也是异步的，不过这个数据流分为两个步骤，一个是子组件`$emit('click')`事件冒泡上去，一个是父组件监听到事件后更改`props`并传播下来，这两个步骤都是异步的吗？还真不是，上面代码片段中，会先打印`parent async`再打印`child async`，这说明“冒泡”过程是同步的，否则没有任何理由紧随着子组件`$emit('click')`同步安排的微任务会晚于父组件`onClick`里面安排的微任务。我们只需要在子组件里增加一行代码就可以验证这一点，在子组件`$emit('click')`之后立即打印父组件的状态，会发现是最新值：
 
