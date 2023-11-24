@@ -26,5 +26,5 @@
 
 ::: info
 Powered by [Vitepress](https://vitepress.dev/). <br/>
-皖ICP备[20013181](https://beian.miit.gov.cn/#/Integrated/index)号. 
+Copyright © 2021-present [皖ICP备20013181号](https://beian.miit.gov.cn/#/Integrated/index)
 :::
