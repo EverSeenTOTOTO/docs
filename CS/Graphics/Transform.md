@@ -30,7 +30,7 @@ $$
 3.  向量与向量运算，运算的结果是向量，含义是将两向量首尾相连，没有连起的另一首和尾组成的新向量，如下图中部$\begin{bmatrix} 3 \\ -1 \\ 0 \end{bmatrix} + \begin{bmatrix} 1 \\ 2 \\ 0 \end{bmatrix}=\begin{bmatrix} 4 \\ 1 \\ 0 \end{bmatrix}$；
 4.  点加上点？我们发现相加后额外的维度值变成了2，为了让额外的维度值保持为1，人为约定下，我们约定$\begin{bmatrix} x \\ y \\ w \end{bmatrix}$代表的是$\begin{bmatrix} x/w \\ y/w \\ 1 \end{bmatrix}$。根据这个约定，两点相加得到的是两者的中点。
 
-<img src="./coodinate-computation.png"/>
+<img src="./coodinate-computation.webp"/>
 
 有了齐次坐标，我们就可以把几个基本的变换都用一个矩阵表示：
 

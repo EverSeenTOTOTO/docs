@@ -136,12 +136,12 @@ print(c.x) -- 2
 
 ```Lua
 local function setPrototype(t, p)
-    setmetatable(t, p)
-    p.__index = p
+  setmetatable(t, p)
+  p.__index = p
 end
 ```
 
-再来看如何实现继承，《Programming in Lua》在讲到[继承](https://www.lua.org/pil/16.2.html)的时候有这么一段代码：
+现在来看看如何实现继承，《Programming in Lua》在讲到[继承](https://www.lua.org/pil/16.2.html)的时候有这么一段代码：
 
 ```lua
 Account = {balance = 0}
@@ -181,7 +181,7 @@ s1:new() -- error, no such method "new"
 
 那么具体要怎么实现`new`方法和`extend`方法呢？可以从JS中受到启发，还是把握住“派生类的`prototype`和父类的`prototype`相同，实例的`__proto__`和构造类的`prototype`相同”这句话。
 
-首先制作一个`prototype`，将类方法和实例方法区分开来：
+首先制作一个`prototype`，将类方法和实例方法区分开来。注意本文把`new`、`extend`这些类对象上具有的方法称为类方法，常规的成员方法称为实例方法：
 
 ```lua
 Account.prototype = {balance = 0}
@@ -207,13 +207,14 @@ function Account:new() -- 注意不是Account.prototype:new
 end
 ```
 
-创建派生类的要点是让派生类获取`Account`上面的方法，这里直接用`new`可能有点hack，参见前面的 tip。同时补充“让派生类的`prototype`和基类`prototype`一致”的内容：
+创建派生类的要点是让派生类的`prototype`和基类`prototype`一致，这里直接用`new`可能有点hack，参见前面的 tip。同时让派生类获取`Account`上面的方法：
 
 ```lua
 function Account:extend()
+  -- 让派生类的`prototype`和基类`prototype`一致
   local o = { prototype = self:new() }
 
-  -- 让派生类的`prototype`和基类`prototype`一致
+  -- 获取Account上面的方法
   setPrototype(o, self)
 
   return o
@@ -224,8 +225,8 @@ end
 
 ```lua
 local function setPrototype(t, p)
-    setmetatable(t, p)
-    p.__index = p
+  setmetatable(t, p)
+  p.__index = p
 end
 
 Account = { prototype = { balance = 0 } }
@@ -246,9 +247,10 @@ function Account:new() -- 注意不是Account.prototype:new
 end
 
 function Account:extend()
+  -- 让派生类的`prototype`和基类`prototype`一致
   local o = { prototype = self:new() }
 
-  -- 让派生类的`prototype`和基类`prototype`一致
+  -- 获取Account上面的方法
   setPrototype(o, self)
 
   return o
@@ -274,4 +276,4 @@ Account.prototype.foo = function() print(42) end
 s2:foo() -- 42
 ```
 
-注意区分`Account`和`Account.prototype`上的方法，前者是给派生类提供的类方法，后者是给实例提供的实例方法。这种实现有个微妙的问题：实例方法中的`self`始终指向的是`Account.prototype`，没办法拿到类`Account`自己，这时，依然可以模仿JS，在`Account.prototype`上加一个属性`constructor`，让其指向类对象自身。
+这种实现有个微妙的问题：实例方法中的`self`始终指向的是`Account.prototype`，没办法拿到类`Account`自己，这时，依然可以模仿JS，在`Account.prototype`上加一个属性`constructor`，让其指向类对象自身。
