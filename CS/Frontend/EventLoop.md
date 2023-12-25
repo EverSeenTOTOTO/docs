@@ -4,7 +4,7 @@
 
 宏任务的概念实际上并不存在，只是为了和微任务对应而附会的一个概念。[浏览器标准](https://html.spec.whatwg.org/multipage/webappapis.html#event-loops)中相关的概念应该是Task，代表了诸如事件调度、timers回调、DOM、网络等任务。重点在8.1.7.3节Processing Model，每次完成一个任务会有一个微任务检查点，如果当前微任务队列不为空，则持续运行微任务直到队列为空，然后才会做一次Update the rendering。
 
-在屏幕上有一个绝对定位的按钮，像下面这段代码，点击按钮能明显看到按钮闪烁了一下，如果将`setTimeout`改为`queueMicrotask`则不会，这或许能作为Task和Microtask执行时机的一个例子，变更DOM是一次Task，执行完之后有一个微任务检查点，因此会先处理掉`btn.style.left = null`的回调再作渲染。而`setTimeout`创建的是Task，排在本轮渲染之后。用`MessageChannel`和`setImmediate`是同样的效果。比较特殊的是`requestAnimationFrame`，虽然是宏任务，但从标准中可以看出它运行在渲染阶段，处在Layout/Paint小阶段之前，所以如果用`requestAnimationFrame`也不会闪烁。
+在屏幕上有一个绝对定位的按钮，像下面这段代码，点击按钮能明显看到按钮闪烁了一下，如果将`setTimeout`改为`queueMicrotask`则不会，这或许能作为Task和Microtask执行时机的一个例子，变更DOM是一次Task，执行完之后有一个微任务检查点，因此使用`queueMicrotask`的话会先处理掉`btn.style.left = null`的回调再作渲染。而`setTimeout`创建的是Task，排在本轮渲染之后。用`MessageChannel`和`setImmediate`是同样的效果。比较特殊的是`requestAnimationFrame`，虽然是宏任务，但从标准中可以看出它运行在渲染阶段，处在Layout/Paint小阶段之前，所以如果用`requestAnimationFrame`也不会闪烁。
 
 ```js
 const btn = document.querySelector('button')!;
@@ -17,7 +17,7 @@ setTimeout(() => { btn.style.left = null; });
 
 ```js
 const btn = document.querySelector('button')!;
-const block = () => queueMicrotask(() => block());
+const block = () => queueMicrotask(block);
 
 btn.style.left = '100px';
 
@@ -54,11 +54,82 @@ setTimeout(() => {
     └──┤    close callbacks    │
        └───────────────────────┘
 
-事件循环自NodeJS启动后就开始，运行在主线程中，如果没有待执行的回调主线程就会退出。每轮循环有图中几个阶段（Phase，每个方框代表一个阶段），每个阶段都有一个FIFO队列存放待处理的回调。
+这里对应的正是libuv一次事件循环的几个阶段，可以在libuv[源码](https://github.com/libuv/libuv/blob/8861a97efac54a9ab17e8174cc826a0ca1804e41/src/unix/core.c#L415C1-L480C2)中找到踪迹：
+
+```c
+int uv_run(uv_loop_t* loop, uv_run_mode mode) {
+  int timeout;
+  int r;
+  int can_sleep;
+
+  r = uv__loop_alive(loop);
+  if (!r)
+    uv__update_time(loop);
+
+  /* Maintain backwards compatibility by processing timers before entering the
+   * while loop for UV_RUN_DEFAULT. Otherwise timers only need to be executed
+   * once, which should be done after polling in order to maintain proper
+   * execution order of the conceptual event loop. */
+  if (mode == UV_RUN_DEFAULT && r != 0 && loop->stop_flag == 0) {
+    uv__update_time(loop); // [!code focus]
+    uv__run_timers(loop); // [!code focus]
+  }
+
+  while (r != 0 && loop->stop_flag == 0) {
+    can_sleep =
+        uv__queue_empty(&loop->pending_queue) &&
+        uv__queue_empty(&loop->idle_handles);
+
+    uv__run_pending(loop); // [!code focus]
+    uv__run_idle(loop); // [!code focus]
+    uv__run_prepare(loop); // [!code focus]
+
+    timeout = 0;
+    if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
+      timeout = uv__backend_timeout(loop);
+
+    uv__metrics_inc_loop_count(loop);
+
+    uv__io_poll(loop, timeout); // [!code focus]
+
+    /* Process immediate callbacks (e.g. write_cb) a small fixed number of
+     * times to avoid loop starvation.*/
+    for (r = 0; r < 8 && !uv__queue_empty(&loop->pending_queue); r++)
+      uv__run_pending(loop);
+
+    /* Run one final update on the provider_idle_time in case uv__io_poll
+     * returned because the timeout expired, but no events were received. This
+     * call will be ignored if the provider_entry_time was either never set (if
+     * the timeout == 0) or was already updated b/c an event was received.
+     */
+    uv__metrics_update_idle_time(loop);
+
+    uv__run_check(loop); // [!code focus]
+    uv__run_closing_handles(loop); // [!code focus]
+
+    uv__update_time(loop); // [!code focus]
+    uv__run_timers(loop); // [!code focus]
+
+    r = uv__loop_alive(loop);
+    if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
+      break;
+  }
+
+  /* The if statement lets gcc compile it to a conditional store. Avoids
+   * dirtying a cache line.
+   */
+  if (loop->stop_flag != 0)
+    loop->stop_flag = 0;
+
+  return r;
+}
+```
+
+每轮循环有图中几个阶段（Phase，每个方框代表一个阶段），每个阶段都有一个FIFO队列存放待处理的回调。
 
 *   timers: 已到期的`setTimeout`、`setInterval`回调在这里执行；
 *   pending callbacks: 系统调用的结果回调，例如试图上报TCP错误`ECONNREFUSED`的行为；
-*   idle, prepare: 说是NodeJS内部使用；
+*   idle, prepare: NodeJS内部使用；
 *   poll: 取回新的I/O事件，处理除了`close`、timer和`setImmediate`回调之外几乎所有的I/O回调；
 *   check: `setImmediate`回调在这里执行；
 *   close callbacks: `close`事件有关的回调，例如`socket.on('close', callback)`。
@@ -107,7 +178,7 @@ setTimeout(() => {
     });
     ```
 
-    这里让`readFile`读取一个大文件，耗时在200ms左右。因此poll阶段等待一段时间后`readFile`完成，其回调进入poll队列，回调也执行完成后才进入下一轮循环执行timers，最终先输出`called`，随后打印的耗时在1200ms左右；极小的情况下，可能由于磁盘缓存原因`readFile`比预期的慢，则poll阶段等待过程中`setTimeout`先于`readFile`完成，先“折返”（wrap back）到timers阶段执行timer回调，然后依次又一次进入poll阶段，这时打印的耗时是300ms多，随后才输出`called`。
+    这里让`readFile`读取一个大文件，耗时在200ms左右。因此poll阶段等待一段时间后`readFile`完成，其回调进入poll队列，回调也执行完成后才进入下一轮循环执行timers，最终先输出`called`，随后打印的耗时在1200ms左右；极小的情况下，可能由于磁盘缓存原因`readFile`比预期的慢，超过300ms，则poll等待过程中`setTimeout`先到期了，将“折返”（wrap back）到timers阶段执行timer回调，然后依次又一次进入poll阶段，这时打印的耗时是300ms多，随后才输出`called`。
 
 ### `process.nextTick()`
 
@@ -123,4 +194,4 @@ process.nextTick(() => console.log('2'));
 
 在有了`queueMicrotask`之后，`process.nextTick()`已经不推荐使用了，`queueMicrotask`创建的是和`Promise`同等优先级的微任务，便于梳理程序执行流。
 
-特别一提，现在还能找到一些文章说NodeJS的事件循环和浏览器的事件循环不同，NodeJS会在每个阶段之间才检查微任务队列，而非在一个宏任务之后就有一个微任务检查点，这是NodeJS\@11版本之前的行为，早改了。
+特别一提，现在还能找到一些文章说NodeJS的事件循环和浏览器的事件循环不同，NodeJS会在每轮事件循环之间才检查微任务队列，而非在一个宏任务之后就有一个微任务检查点，这是NodeJS\@11版本之前的行为，[早改了](https://github.com/nodejs/node/pull/22842)。
