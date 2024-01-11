@@ -43,7 +43,7 @@ function editFile(dirname, filename) {
 }
 
 function scanDir(dir) {
-  if (/node_modules/.test(dir)) return;
+  if (/node_modules|\.vitepress/.test(dir)) return;
 
   fs.readdirSync(dir).map(child => {
     const fullpath = path.join(dir, child);

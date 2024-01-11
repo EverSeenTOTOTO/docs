@@ -1,4 +1,3 @@
-import { useMediaQuery } from '@vueuse/core'
 import type { DefaultTheme } from 'vitepress/theme'
 import {
   computed,
@@ -13,7 +12,6 @@ import {
 import { useData } from 'vitepress'
 import {
   HASH_RE,
-  EXT_RE,
   inBrowser,
   normalize
 } from '../utils'

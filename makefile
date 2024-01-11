@@ -4,9 +4,9 @@ lint:
 
 .PHONY: build
 build:
-	yarn docs:build
+	pnpm run docs:build
 	tar -cvzf vp.tar.gz .vitepress
 
 .PHONY: start
 start:
-	yarn docs:dev
+	pnpm run docs:dev

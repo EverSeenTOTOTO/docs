@@ -7,8 +7,9 @@ async function main() {
     const dir = path.dirname(img);
     const file = path.basename(img);
 
-    try {
+    if (/node_modules|\.vitepress/.test(dir)) return;
 
+    try {
       await $`rg ${file} ${dir}`;
     } catch (e) {
       if (/y/i.test(await question(`remove unused image ${img}?`))) {

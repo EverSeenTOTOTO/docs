@@ -247,6 +247,10 @@ function onCaretClick() {
   padding-left: 16px;
 }
 
+.VPSidebarItem {
+  transition: all 0.3s;
+}
+
 .VPSidebarItem.collapsed .items {
   display: none;
 }
