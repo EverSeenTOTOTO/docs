@@ -33,7 +33,11 @@ setTimeout(() => {
 
 ## NodeJS平台
 
-下面这段来自NodeJS[官方文档](https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/)，不过这篇文章挺毒的，很多地方没说清楚：
+:::info
+[这个仓库](https://github.com/EverSeenTOTOTO/eventloop-in-lua)有笔者基于luv（Lua的libuv绑定）模拟`async/await`语法并模仿NodeJS事件循环的尝试，也许有所帮助。
+:::
+
+下面这段来自NodeJS[官方文档](https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/)，不过这篇文章读起来挺费劲的，很多地方没说清楚，需要读者对libuv有一些了解：
 
        ┌───────────────────────┐
     ┌─>│        timers         │
@@ -182,9 +186,9 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
 ### `process.nextTick()`
 
-NodeJS自己也吐嘈了，它的`nextTick`有立即执行的作用，而`setImmediate`却有下一个“tick”才执行的作用，这都是历史遗留的因素。按照官方的文档，不管当前是事件循环的哪一个阶段，nextTickQueue会在当前“操作”完成后立即处理，这里“操作”是来自NodeJS底层的概念，我推测代表的就是“宏任务”或者浏览器标准中的Task，一个Task之后清空微任务队列。故nextTickQueue作为微任务队列总是在进入下一个Task前处理完，因此如果递归`nextTick`的话可能因为迟迟进入不了poll阶段造成I/O“饥饿”，和前文`block`的效果类似。
+NodeJS 自己也吐嘈了，它的`nextTick`有立即执行的作用，而`setImmediate`却有下一个“tick”才执行的作用。为什么会出现这种情况呢？按照官方的文档，不管当前是事件循环的哪一个阶段，nextTickQueue 会在当前“操作”完成后立即处理，这里“操作”是来自 NodeJS 底层的概念，代表的就是“宏任务”或者说浏览器标准中的 Task，所以 NodeJS 的事件循环调度要做到与 Web 平台一致，其关键就在于每个 Task 之后清空微任务队列。故 nextTickQueue 作为微任务队列总是在进入下一个 Task 前处理完，因此`setImmediate`作为宏任务，自然会晚于本次宏任务执行过程中产生的微任务调度。
 
-作为微任务，`process.nextTick()`优先级甚至比`Promise`还高，下面的代码会先输出`2`再输出`1`。
+作为微任务，`process.nextTick()`优先级甚至比常规的`Promise`还高，下面的代码会先输出`2`再输出`1`。
 
 ```js
 Promise.resolve().then(() => console.log('1'));
@@ -193,5 +197,3 @@ process.nextTick(() => console.log('2'));
 ```
 
 在有了`queueMicrotask`之后，`process.nextTick()`已经不推荐使用了，`queueMicrotask`创建的是和`Promise`同等优先级的微任务，便于梳理程序执行流。
-
-特别一提，现在还能找到一些文章说NodeJS的事件循环和浏览器的事件循环不同，NodeJS会在每轮事件循环之间才检查微任务队列，而非在一个宏任务之后就有一个微任务检查点，这是NodeJS\@11版本之前的行为，[早改了](https://github.com/nodejs/node/pull/22842)。
