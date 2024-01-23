@@ -51,3 +51,4 @@
 * 作家总是与一张白纸（或一个空白屏幕）进行对抗，通常是白纸获胜。
 
   ChatGPT 的用户总是与一个空白文本框进行对抗，通常是空白文本框获胜。
+* 理想的 semver 是 breaking.feat.bugfix，现实的 semver 是 breaking.breaking.breaking。

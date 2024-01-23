@@ -1,12 +1,13 @@
 {
   "dependencies": {
-    "@vueuse/core": "^10.7.1",
+    "@vueuse/core": "^10.7.2",
     "markdown-it-footnote": "^3.0.3",
     "markdown-it-mathjax3": "^4.3.2"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
-    "vitepress": "^1.0.0-rc.24"
+    "@types/node": "^20.11.5",
+    "typescript": "^5.3.3",
+    "vitepress": "1.0.0-rc.40"
   },
   "scripts": {
     "docs:dev": "vitepress dev",

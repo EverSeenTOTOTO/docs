@@ -87,6 +87,10 @@ if (sidebar?.[0]) {
   sidebar[0].collapsed = false;
 }
 
+const resolvePath = (filepath: string) => fileURLToPath(
+  new URL(filepath, import.meta.url)
+)
+
 export default defineConfig({
   title: "EverSeenFlash's Home",
   themeConfig: {
@@ -130,13 +134,16 @@ export default defineConfig({
     resolve: {
       alias: [
         {
+          find: /^@vp/,
+          replacement: resolvePath('./components/')
+        },
+        {
           find: /^.*\/VPSidebarItem\.vue$/,
-          replacement: fileURLToPath(
-            new URL('./theme/components/VPSidebarItem.vue', import.meta.url)
-          )
+          replacement: resolvePath('./theme/components/VPSidebarItem.vue')
         }
       ]
     }
   }
 
 })
+
