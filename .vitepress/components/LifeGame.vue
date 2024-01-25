@@ -1,69 +1,107 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, reactive, computed, onUnmounted } from 'vue';
 import { useData } from 'vitepress'
 
 const { isDark } = useData()
-const bgColor = computed(() => !isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)');
-const fgColor = computed(() => isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)');
 
-const version = ref(0);
-const forceUpdate = () => version.value++;
+const colors = computed(() => isDark.value
+  ? {
+    bg: 'rgba(255,255,255,0.45)',
+    fg: 'rgba(0,0,0,0.45)',
+    btnBg: '#2a8148',
+  }
+  : {
+    bg: 'rgba(0,0,0,0.45)',
+    fg: 'rgba(255,255,255,0.45)',
+    btnBg: '#c6f1d5',
+  });
 
-const SIZE = 64;
+const SIZE = 64; // grid cells
+const bits = reactive(Array.from({ length: SIZE * SIZE }, () => false));
+const generation = ref(0);
+const alive = computed(() => bits.filter(Boolean).length);
 
-const range = Array.from({ length: SIZE * SIZE });
-const view = new DataView(new ArrayBuffer(range.length / 8));
+let interval: NodeJS.Timeout | null = null;
 
-const convertIndexToOffset = (index: number) => {
+const toggleBit = (index: number) => bits.splice(index, 1, !bits[index]);
+const tick = () => {
+  if (alive.value === 0) return;
 
-  const rowIndex = index >> 6; // mod SIZE
-  const colIndex = index & 0x3f;
+  const newBitMap = bits.slice();
+  const neighbors: boolean[] = [];
+  const computeNeighbors = (index: number) => {
+    const rem = (val: number) => (val + bits.length) % bits.length;
+    // top left
+    neighbors[0] = bits[rem(index - SIZE - 1)];
+    // top
+    neighbors[1] = bits[rem(index - SIZE)];
+    // top right
+    neighbors[2] = bits[rem(index - SIZE + 1)];
+    // left
+    neighbors[3] = bits[rem(index - 1)];
+    // right
+    neighbors[4] = bits[rem(index + 1)];
+    // bottom left
+    neighbors[5] = bits[rem(index + SIZE - 1)];
+    // bottom
+    neighbors[6] = bits[rem(index + SIZE)];
+    // bottom right
+    neighbors[7] = bits[rem(index + SIZE + 1)];
+  }
 
-  // console.log(rowIndex, colIndex);
+  for (let i = 0; i < bits.length; i++) {
+    computeNeighbors(i);
+    const alive = neighbors.filter(Boolean).length;
+    newBitMap[i] = newBitMap[i] ? alive === 2 || alive === 3 : alive === 3;
+  }
 
-  const byteOffset = rowIndex * (SIZE >> 3) + (colIndex >> 3);
-  const bitOffset = colIndex & 0x7;
-
-  return { bitOffset, byteOffset }
+  bits.splice(0, bits.length, ...newBitMap);
+  generation.value++;
+}
+const pause = () => clearInterval(interval);
+const auto = () => {
+  pause();
+  interval = setInterval(tick, 300)
+}
+const reset = () => {
+  pause();
+  generation.value = 0;
+  for (let i = 0; i < bits.length; i++) {
+    bits[i] = false;
+  }
 }
 
-const isBitSet = (index: number) => {
-  const { byteOffset, bitOffset } = convertIndexToOffset(index);
-  const value = view.getUint8(byteOffset);
-  return ((value >> bitOffset) & 1) === 1;
-}
+onUnmounted(pause)
 
-const toggleBit = (index: number) => {
-  const { byteOffset, bitOffset } = convertIndexToOffset(index);
-  const value = view.getUint8(byteOffset);
-
-  view.setUint8(byteOffset, value ^ (1 << bitOffset));
-  forceUpdate();
-}
-
-const pressing = ref(false);
+const pressed = ref(false);
 const updated = new Map<number, boolean>();
 const handlePointerDown = (index: number) => {
-  pressing.value = true;
+  pressed.value = true;
+  toggleBit(index);
+  updated.set(index, true);
+}
+const handlePointerMove = (index: number) => {
+  if (!pressed.value || updated.get(index)) return;
   toggleBit(index);
   updated.set(index, true)
 }
-const handlePointerEnter = (index: number) => {
-  if (!pressing.value || updated.get(index)) return;
-  toggleBit(index);
-  updated.set(index, true)
-}
-const handlePointerUp = (_index: number) => {
-  pressing.value = false;
+const handlePointerUp = () => {
+  pressed.value = false;
   updated.clear();
 }
-
 </script>
 <template>
-  <div :key="version" class="container" :style="{ '--size': SIZE, '--bg': bgColor, '--fg': fgColor }">
-    <div v-for="(_, index) in range" :key="index" class="item" :class="{ 'item--set': isBitSet(index) }"
-      @pointerdown="handlePointerDown(index)" @pointerenter="handlePointerEnter(index)"
-      @pointerup="handlePointerUp(index)" />
+  <div class="operation" :style="{ '--size': SIZE, '--btnBg': colors.btnBg }">
+    <span :style="{ flex: '0 0 24%' }">Generation: {{ generation }}</span>
+    <span :style="{ flex: '0 0 12%' }">Alive: {{ alive }}</span>
+    <button :style="{ marginInlineStart: 'auto' }" @click="tick">Tick</button>
+    <button @click="auto">Auto</button>
+    <button @click="pause">Pause</button>
+    <button @click="reset">Reset</button>
+  </div>
+  <div class="container" :style="{ '--size': SIZE, '--bg': colors.bg, '--fg': colors.fg }">
+    <div v-for="(bit, index) in bits" class="item" :class="{ 'item--set': bit }" @pointerdown="handlePointerDown(index)"
+      @pointerup="handlePointerUp" @pointermove="handlePointerMove(index)" />
   </div>
 </template>
 <style scoped>
@@ -73,7 +111,6 @@ const handlePointerUp = (_index: number) => {
   grid-template-rows: repeat(var(--size), 1fr);
   width: calc(var(--size) * 10px);
   height: calc(var(--size) * 10px);
-  margin-block-start: 24px;
   border-inline-end: 1px solid var(--bg);
   border-block-end: 1px solid var(--bg);
 }
@@ -85,9 +122,33 @@ const handlePointerUp = (_index: number) => {
   &:hover {
     background-color: var(--bg);
   }
+
+  &:active {
+    opacity: 0.6;
+  }
 }
 
 .item--set {
   background-color: var(--bg);
+}
+
+.operation {
+  display: flex;
+  flex-wrap: nowrap;
+  width: calc(var(--size) * 10px);
+  margin-block: 24px 12px;
+}
+
+.operation button {
+  padding-inline: 6px;
+  border-radius: 3px;
+
+  &:active {
+    opacity: 0.6;
+  }
+
+  &:hover {
+    background-color: var(--btnBg);
+  }
 }
 </style>
