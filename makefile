@@ -7,6 +7,10 @@ build:
 	pnpm run docs:build
 	tar -cvzf vp.tar.gz .vitepress
 
-.PHONY: start
-start:
+.PHONY: dev
+dev:
 	pnpm run docs:dev
+
+.PHONY: start
+start: build
+	pnpm run docs:preview

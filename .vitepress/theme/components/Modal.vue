@@ -24,18 +24,20 @@ export default {
 }
 </script>
 <template>
-  <Teleport to="#app">
-    <div class="modal">
-      <Transition name="fade">
-        <div v-if="open" class="mask" @click="handleClose" />
-      </Transition>
-      <Transition name="zoom">
-        <div v-if="open" class="wrap">
-          <slot />
-        </div>
-      </Transition>
-    </div>
-  </Teleport>
+  <ClientOnly>
+    <Teleport to="#app">
+      <div class="modal">
+        <Transition name="fade">
+          <div v-if="open" class="mask" @click="handleClose" />
+        </Transition>
+        <Transition name="zoom">
+          <div v-if="open" class="wrap">
+            <slot />
+          </div>
+        </Transition>
+      </div>
+    </Teleport>
+  </ClientOnly>
 </template>
 <style scoped>
 .modal {

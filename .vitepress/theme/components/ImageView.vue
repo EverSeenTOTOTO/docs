@@ -21,23 +21,7 @@ const bindClick = (img: HTMLImageElement) => {
   });
 }
 
-const observer = new MutationObserver((mutationsList) => {
-  for (let mutation of mutationsList) {
-    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-      mutation.addedNodes.forEach(node => {
-        if (node.nodeName === 'IMG') {
-          bindClick(node as HTMLImageElement);
-        }
-        if (node.nodeType === Node.ELEMENT_NODE && node.hasChildNodes()) {
-          (node as HTMLElement).querySelectorAll('img').forEach(imgNode => {
-            bindClick(imgNode)
-          });
-        }
-      });
-    }
-  }
-});
-
+const observer = ref<MutationObserver>(null);
 
 onMounted(() => {
   const targetNode = document.querySelector('.main');
@@ -47,10 +31,27 @@ onMounted(() => {
   targetNode.querySelectorAll('img').forEach(imgNode => {
     bindClick(imgNode);
   });
-  observer.observe(targetNode, { childList: true, subtree: true });
+
+  observer.value = new MutationObserver((mutationsList) => {
+    for (let mutation of mutationsList) {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeName === 'IMG') {
+            bindClick(node as HTMLImageElement);
+          }
+          if (node.nodeType === Node.ELEMENT_NODE && node.hasChildNodes()) {
+            (node as HTMLElement).querySelectorAll('img').forEach(imgNode => {
+              bindClick(imgNode)
+            });
+          }
+        });
+      }
+    }
+  });
+  observer.value.observe(targetNode, { childList: true, subtree: true });
 });
 onUnmounted(() => {
-  observer.disconnect();
+  observer.value?.disconnect();
 });
 
 </script>
