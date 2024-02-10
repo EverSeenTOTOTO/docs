@@ -69,16 +69,16 @@ the data the rules are applied to.
 
 常规的模式匹配将带有占位符（变量）的模式与明确的数据相比对，模式与目标之间泾渭分明。如果放开这个限制，允许数据中也出现变量呢？这时模式与数据没有明显的界限，每个条目都可能蕴含一定的信息和未知数，我们的目标是比对各个模式之间相对应的部分，消除未知，汇总为最为明确的一个版本。这种拓展的模式匹配被称为 unification。
 
-书中的 unify 实现读起来比较晦涩，一方面是用了CPS风格，另一方面使用了大量没有给出具体实现的工具函数，需要结合完整源代码才能阅读。因此这里给出我自己实现的版本，其核心都在`dispatch`函数的实现上，它是典型的匹配——动作过程。其核心思路是用一个`dict`记下变量的值，特别是当一个变量`Var`和一组表达式`Term`匹配的时候，我们需要像解方程一样用`Term`来表示这个变量`Var`，并且确保`Term`中没有`Var`（否则将导致递归定义）。每次有变量的值确定后，都要回过头来更新`dict`中的值。
+书中的 unify 实现读起来比较晦涩，一方面是用了CPS风格，另一方面使用了大量没有给出具体实现的工具函数，需要结合完整源代码才能阅读。因此这里给出我自己实现的[版本](https://github.com/EverSeenTOTOTO/tsdemo/blob/main/src/unify/index.ts)，其核心都在`dispatch`函数的实现上，它是典型的匹配——动作过程。其关键思路是用一个`dict`记下变量的值，特别是当一个变量`Var`和一组表达式`Term`匹配的时候，我们需要像解方程一样用`Term`来表示这个变量`Var`，并且确保`Term`中没有`Var`的身影（否则将导致递归定义）。每次有变量的值确定后，都要回过头来更新`dict`中的值，这个过程中可能有新的变量被确定，因此需要递归进行，`flushDict`便是做这个的。
 
 ```ts
 const dispatch = (
   term1: Expr,
   term2: Expr,
   dict: Dict,
-  onSuccess: () => Expr[] | void,
+  onSuccess: () => Expr | void,
   onFail: (e: Error) => void,
-): Expr[] | void => {
+): Expr | void => {
   return match(term1, term2, [
     [Const, Const,
       (c1, c2) => (isConstEqual(c1, c2) ? onSuccess() : onFail(new Error(`${c1} !== ${c2}`)))],
@@ -89,14 +89,15 @@ const dispatch = (
           return dispatch(c1, dict.get(v2.name)!, dict, onSuccess, onFail);
         }
 
-        dict.forEach((value, key) => {
-          if (value instanceof Term) {
-            dict.set(key, new Term(value.atoms.map((atom) => replaceVariable(atom, v2, c1))));
-          }
-        });
         dict.set(v2.name, c1);
 
-        return onSuccess();
+        return flushDict(
+          v2,
+          c1,
+          dict,
+          onSuccess,
+          onFail,
+        );
       }],
 
     [Const, Term,
@@ -107,12 +108,16 @@ const dispatch = (
 
     [Var, Var,
       (v1, v2) => {
+        if (isVarEqual(v1, v2)) return onSuccess();
+
         if (dict.has(v1.name)) {
           return dispatch(dict.get(v1.name)!, v2, dict, onSuccess, onFail);
         }
         if (dict.has(v2.name)) {
           return dispatch(v1, dict.get(v2.name)!, dict, onSuccess, onFail);
         }
+
+        dict.set(v1.name, v2);
 
         return onSuccess();
       }],
@@ -121,19 +126,31 @@ const dispatch = (
       (v1, t2) => {
         const newTerm = eliminateVariables(t2, dict) as Term;
 
-        // 不能有递归定义
-        if (newTerm.atoms.some((atom) => isSameVar(atom as Var, v1))) {
+        if (newTerm.atoms.some((atom) => isVarEqual(atom as Var, v1))) {
           return onFail(new Error(`recursive variable in term\n\t${v1}\n\t${t2}`));
         }
 
-        dict.forEach((value, key) => {
-          if (value instanceof Term) {
-            dict.set(key, new Term(value.atoms.map((atom) => replaceVariable(atom, v1, newTerm))));
-          }
-        });
-        dict.set(v1.name, newTerm);
+        const onOk = () => {
+          dict.set(v1.name, newTerm);
 
-        return onSuccess();
+          if (isConst(newTerm)) {
+            return flushDict(
+              v1,
+              newTerm,
+              dict,
+              onSuccess,
+              onFail,
+            );
+          }
+
+          return onSuccess();
+        };
+
+        if (dict.has(v1.name)) {
+          return dispatch(dict.get(v1.name)!, newTerm, dict, onOk, onFail);
+        }
+
+        return onOk();
       }],
 
     [Term, Const,
