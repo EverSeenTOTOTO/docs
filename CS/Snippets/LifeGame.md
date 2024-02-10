@@ -13,7 +13,9 @@ import LifeGame from '@vp/LifeGame.vue'
 <script setup lang="ts">
 import { ref, reactive, computed, onUnmounted } from 'vue';
 import { useData } from 'vitepress'
+import { useMediaQuery } from '@vueuse/core'
 
+const isSmallScreen = useMediaQuery('(max-width: 1024px)');
 const { isDark } = useData()
 
 const colors = computed(() => isDark.value
@@ -28,7 +30,7 @@ const colors = computed(() => isDark.value
     btnBg: '#c6f1d5',
   });
 
-const SIZE = 64; // grid cells
+const SIZE = isSmallScreen.value ? 24 : 64; // grid cells
 const bits = reactive(Array.from({ length: SIZE * SIZE }, () => false));
 const generation = ref(0);
 const alive = computed(() => bits.filter(Boolean).length);
@@ -106,23 +108,32 @@ const handlePointerUp = () => {
 
 ```vue [template]
 <template>
-  <div class="operation" :style="{ '--size': SIZE, '--btnBg': colors.btnBg }">
-    <span :style="{ flex: '0 0 24%' }">Generation: {{ generation }}</span>
-    <span :style="{ flex: '0 0 12%' }">Alive: {{ alive }}</span>
-    <button :style="{ marginInlineStart: 'auto' }" @click="tick">Tick</button>
-    <button @click="auto">Auto</button>
-    <button @click="pause">Pause</button>
-    <button @click="reset">Reset</button>
-  </div>
-  <div class="container" :style="{ '--size': SIZE, '--bg': colors.bg, '--fg': colors.fg }">
-    <div v-for="(bit, index) in bits" class="item" :class="{ 'item--set': bit }" @pointerdown="handlePointerDown(index)"
-      @pointerup="handlePointerUp" @pointermove="handlePointerMove(index)" />
+  <div class="game" :style="{ '--size': SIZE, '--btnBg': colors.btnBg, '--bg': colors.bg, '--fg': colors.fg }">
+    <div class="operation">
+      <span>Generation: {{ generation }}</span>
+      <span>Alive: {{ alive }}</span>
+      <button :style="{ marginInlineStart: 'auto' }" @click="tick">Tick</button>
+      <button @click="auto">Auto</button>
+      <button @click="pause">Pause</button>
+      <button @click="reset">Reset</button>
+    </div>
+    <div class="container">
+      <div v-for="(bit, index) in bits" class="item" :class="{ 'item--set': bit }" @pointerdown="handlePointerDown(index)"
+        @pointerup="handlePointerUp" @pointermove="handlePointerMove(index)" />
+    </div>
   </div>
 </template>
 ```
 
 ```vue [style]
 <style scoped>
+.game {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+}
+
 .container {
   display: grid;
   grid-template-columns: repeat(var(--size), 1fr);
@@ -152,21 +163,42 @@ const handlePointerUp = () => {
 
 .operation {
   display: flex;
-  flex-wrap: nowrap;
-  width: calc(var(--size) * 10px);
+  flex-wrap: wrap;
+  min-width: calc(var(--size) * 10px);
   margin-block: 24px 12px;
-}
 
-.operation button {
-  padding-inline: 6px;
-  border-radius: 3px;
-
-  &:active {
-    opacity: 0.6;
+  &>span {
+    flex: 0 0 25%;
   }
 
-  &:hover {
-    background-color: var(--btnBg);
+  >button {
+    padding-inline: 6px;
+    border-radius: 3px;
+
+    &:active {
+      opacity: 0.6;
+    }
+
+    &:hover {
+      background-color: var(--btnBg);
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .game {
+    align-items: center;
+  }
+
+  .operation {
+
+    &>span {
+      flex: 0 0 50%;
+    }
+
+    &>span:last-of-type {
+      text-align: right;
+    }
   }
 }
 </style>

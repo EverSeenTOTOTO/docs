@@ -67,54 +67,97 @@ the data the rules are applied to.
 
 ## Pattern Matching
 
-4.4以类型推断为例子讲述将模式匹配这个概念泛化之后的能量，我觉得可以和虎书第16章结合起来看。
+常规的模式匹配将带有占位符（变量）的模式与明确的数据相比对，模式与目标之间泾渭分明。如果放开这个限制，允许数据中也出现变量呢？这时模式与数据没有明显的界限，每个条目都可能蕴含一定的信息和未知数，我们的目标是比对各个模式之间相对应的部分，消除未知，汇总为最为明确的一个版本。这种拓展的模式匹配被称为 unification。
 
-类型推断实现过程中的一个重要方法是`unify`函数，类比虎书的算法16-2。一种可能的，用伪typescript进行模拟的代码是：
-
-```ts
-type unify<T, U> = T extends App<infer TyCon, infer TList>
-    ? U extends App<TyCon, infer UList>
-        ? unify_each<TList, UList> // 算法16-2 规则1
-        : never
-    : TyCon extends TyFun<infer TyVarList, infer Ty>
-        ? unify<subst<Ty, make_subst_rules<TyVarList, TList>>> // 算法16-2 规则2
-        : ...
-            : T extends Var<infer B> and U extends Var<B> // 算法16-2 规则6
-                ? "OK"
-                : "Error"
-            : ...
-```
-
-这段伪码与书中示例的区别在于我们并没有给出一个指示如何分派的`dict`，而是借助typescript的条件类型实现，万变不离其宗，不管是`subst`还是`unify`，都是一个对参数进行模式匹配然后分派给相应处理函数的过程，只是各自的功能不同，`subst`（对应本节`do-substitude`函数）做变量替换，`unify`（对应本节`unify`函数）进行类型等价性测试，终极目标是对类型方程进行求解，方程的未知数在虎书上记作`Var<T>`，在本节中记作`(? name)`。
-
-所以到底如何进行类型推断？先揣测类型检查的过程：为了检查函数声明`function f<z>(x: t1): t2 = e`的类型，这里的`z`是一个类型变量，我们将`f`转化为形参为`z`的`Poly`类型：`Poly<z, App<Arrow, [t1, t2]>>`。当我们遇到一个函数调用`f<int>(a)`之后，首先在环境中查找`f`的类型，再用`int`替换`t1`和`t2`中的`z`，然后检查`a`是否具有类型`t1`，并将`t2`作为函数调用的返回类型，显然“检查”、“替换”正是`unify`和`subst`发力的地方。虎书贴心的给出了代码，这里做了一些裁剪和修改：
+书中的 unify 实现读起来比较晦涩，一方面是用了CPS风格，另一方面使用了大量没有给出具体实现的工具函数，需要结合完整源代码才能阅读。因此这里给出我自己实现的版本，其核心都在`dispatch`函数的实现上，它是典型的匹配——动作过程。其核心思路是用一个`dict`记下变量的值，特别是当一个变量`Var`和一组表达式`Term`匹配的时候，我们需要像解方程一样用`Term`来表示这个变量`Var`，并且确保`Term`中没有`Var`（否则将导致递归定义）。每次有变量的值确定后，都要回过头来更新`dict`中的值。
 
 ```ts
-transdec(env, function f<z>(x: t1): t2 = e) = 
-    ...
-    // 更新env
-    env' = env + { f -> Poly<z, App<Arrow, [t1, t2]>>, x -> t1 }
-    // 检查e的类型
-    t3 = transexp(env', e)
-    // 比对t2和t3
-    unify(t2, t3)
+const dispatch = (
+  term1: Expr,
+  term2: Expr,
+  dict: Dict,
+  onSuccess: () => Expr[] | void,
+  onFail: (e: Error) => void,
+): Expr[] | void => {
+  return match(term1, term2, [
+    [Const, Const,
+      (c1, c2) => (isConstEqual(c1, c2) ? onSuccess() : onFail(new Error(`${c1} !== ${c2}`)))],
 
-// transexp也是匹配分派的模式，以整型加和带类型实例的函数调用为例说明transexp的作用
-transexp(env, e1 + e2) = 
-    // 递归下降对两个子项进行检查
-    unify(transexp(env, e1), App<Int, []>)
-    unify(transexp(env, e2), App<Int, []>)
-    // 构造返回类型
-    App<Int, []>
+    [Const, Var,
+      (c1, v2) => {
+        if (dict.has(v2.name)) {
+          return dispatch(c1, dict.get(v2.name)!, dict, onSuccess, onFail);
+        }
 
-transexp(env, e1<ty>(e2)) = 
-    check that e1 = Poly<z, App<Arrow, [t1, t2]>>
-    // 检查参数类型
-    unify(e2, subst(t1, { z -> ty }))
-    // 构造返回类型
-    subst(t2, { z -> ty })
+        dict.forEach((value, key) => {
+          if (value instanceof Term) {
+            dict.set(key, new Term(value.atoms.map((atom) => replaceVariable(atom, v2, c1))));
+          }
+        });
+        dict.set(v2.name, c1);
+
+        return onSuccess();
+      }],
+
+    [Const, Term,
+      (c1, t2) => onFail(new Error(`match constant and term\n\t${c1}\n\t${t2}`))],
+
+    [Var, Const,
+      (v1, c2) => dispatch(c2, v1, dict, onSuccess, onFail)],
+
+    [Var, Var,
+      (v1, v2) => {
+        if (dict.has(v1.name)) {
+          return dispatch(dict.get(v1.name)!, v2, dict, onSuccess, onFail);
+        }
+        if (dict.has(v2.name)) {
+          return dispatch(v1, dict.get(v2.name)!, dict, onSuccess, onFail);
+        }
+
+        return onSuccess();
+      }],
+
+    [Var, Term,
+      (v1, t2) => {
+        const newTerm = eliminateVariables(t2, dict) as Term;
+
+        // 不能有递归定义
+        if (newTerm.atoms.some((atom) => isSameVar(atom as Var, v1))) {
+          return onFail(new Error(`recursive variable in term\n\t${v1}\n\t${t2}`));
+        }
+
+        dict.forEach((value, key) => {
+          if (value instanceof Term) {
+            dict.set(key, new Term(value.atoms.map((atom) => replaceVariable(atom, v1, newTerm))));
+          }
+        });
+        dict.set(v1.name, newTerm);
+
+        return onSuccess();
+      }],
+
+    [Term, Const,
+      (t1, c2) => dispatch(c2, t1, dict, onSuccess, onFail)],
+
+    [Term, Var,
+      (t1, v2) => dispatch(v2, t1, dict, onSuccess, onFail)],
+
+    [Term, Term,
+      (t1, t2) => {
+        if (t1.atoms.length !== t2.atoms.length) {
+          return onFail(new Error(`atom length not equal\n\t${t1}\n\t${t2}`));
+        }
+
+        return unifier(
+          t1.atoms,
+          t2.atoms,
+          dict,
+          onSuccess,
+          onFail,
+        );
+      }],
+  ], onFail);
+};
 ```
 
-为了进行类型推断，可以在需要类型的地方先放置一些占位符（Placeholder，或虎书称之为元变量Metavar），随后根据类型的约束关系将元变量实例化，例如在了解到元变量`a = list<n>`时，我们将`a -> App<list, [Meta<n>]>`加入到环境中，这个过程创建了一个新的元变量`n`，如果最终发现`n`是自由的，那么应该将这个类型泛化（通用化）为`Poly<T, App<list, [Var<T>]>>`。
-
-那么如何“了解”元变量的类型呢？方法是修改`unify`的实现，想想占位符的含义是什么，就是这地方放啥都行，因此当我们需要用`unify`比对一个占位符和其他类型的时候，隐含的意思就是这个占位符最好可以容纳下目标类型。虎书的说明我理解如下：对于`unify(a, t)`，其中a是一个元变量，如果a已经被实例化为某个类型u，那么我们需要对u和t进行比对，否则，将a实例化为t。同时如果u和t比对后相互兼容，那应该将a的实例修改为其中范畴较大（还是小？？？）者，也即虎书所说的“若有可能，`unify`还会修改全局状态，将这两个类型标记为同一类型”，这也是`unify`为什么叫`unify`而不是`compare`、`match`之类的原因。
+unification 的典型用例是实现类型推断。复杂类型（Term）可以被看成是建立在基础类型（Const，字面值类型数字、字符串等）之上的复杂数据结构，未知的部分用变量（Var）表示，一个未知类型往往需要同时满足多个约束，我们最终便是要得到一个能够满足全部约束的解。

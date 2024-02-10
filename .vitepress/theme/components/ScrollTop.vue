@@ -2,7 +2,7 @@
 import { useWindowScroll } from '@vueuse/core'
 
 const { y } = useWindowScroll({
-  behavior:'smooth'
+  behavior: 'smooth'
 })
 const scrollTop = () => {
   y.value = 0

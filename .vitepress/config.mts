@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { defineConfig } from 'vitepress'
 import mdFootnote from 'markdown-it-footnote'
+import mdLinkOpen from './mdit-plugins/link-open';
 import { fileURLToPath, URL } from 'node:url'
 
 const isDir = (filepath: string) => fs.statSync(filepath).isDirectory();
@@ -127,6 +128,7 @@ export default defineConfig({
     math: true,
     config(md) {
       md.use(mdFootnote)
+      md.use(mdLinkOpen)
     }
   },
 

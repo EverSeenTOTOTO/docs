@@ -52,3 +52,4 @@
 
   ChatGPT 的用户总是与一个空白文本框进行对抗，通常是空白文本框获胜。
 * 理想的 semver 是 breaking.feat.bugfix，现实的 semver 是 breaking.breaking.breaking。
+* 我们将在1月25日震惊世界。（PayPal CEO）
