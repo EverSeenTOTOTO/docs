@@ -832,7 +832,7 @@ export type evaluate<T, Env> = match<T, [
   [ph<any>, eval_ph<T, Env>],
   [lambda<any, any>, eval_lambda<T, Env>],
   [app<any, any>, eval_app<T, Env>],
-+   [add_expr<any, any>, eval_add<T, Env>],
+  [add_expr<any, any>, eval_add<T, Env>], // [!code ++]
   [any, never],
 ]>;
 ```

@@ -140,6 +140,10 @@ export default defineConfig({
           replacement: resolvePath('./components/')
         },
         {
+          find: /lxgw-webkai-lite-webfont/,
+          replacement: resolvePath('../node_modules/lxgw-wenkai-lite-webfont/')
+        },
+        {
           find: /^.*\/VPSidebarItem\.vue$/,
           replacement: resolvePath('./theme/components/VPSidebarItem.vue')
         }

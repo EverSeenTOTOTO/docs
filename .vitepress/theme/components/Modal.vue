@@ -26,10 +26,10 @@ export default {
 <template>
   <Teleport to="#app">
     <div class="modal">
-      <Transition appear name="fade">
+      <Transition name="fade">
         <div v-if="open" class="mask" @click="handleClose" />
       </Transition>
-      <Transition appear name="zoom">
+      <Transition name="zoom">
         <div v-if="open" class="wrap">
           <slot />
         </div>

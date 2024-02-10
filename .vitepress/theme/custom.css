@@ -1,4 +1,9 @@
+@import 'lxgw-webkai-lite-webfont/style.css';
+
 :root {
+  --vp-font-family-base:"LXGW WenKai Lite", sans-serif;
+  --vp-font-family-mono:"LXGW WenKai Mono Lite", sans-serif;
+
   --vp-layout-max-width: 1520px;
 
   --vp-c-bg: #eceff1;
