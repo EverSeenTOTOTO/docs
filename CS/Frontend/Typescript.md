@@ -1,6 +1,6 @@
 # Typescript
 
-说实话大多数TS面试题我觉得没有问的必要，只要理解TS类型系统的图灵完备性，理解编译期和运行期的差异，多数问题都可以元编程解决。这些题目的阻碍往往是TS在工作实践中应用**较少**的一些技巧。现在假定你已经了解实现TS类型元编程的各种“素材”，如数字表示和基本运算，列表及列表操作等，网络上有很多教程，我也写过[一篇](https://www.everseenflash.com/CS/Snippets/Type%20Metaprogram.md)，下面选取[type-challenges](https://github.com/type-challenges/type-challenges)标记为“地狱”难度的两道题目为例说明这一点：
+说实话大多数TS面试题我觉得没有问的必要，只要理解TS类型系统的图灵完备性，理解编译期和运行期的差异，多数问题都可以元编程解决。这些题目的阻碍往往是TS在工作实践中应用**较少**的一些技巧。现在假定你已经了解实现TS类型元编程的各种“素材”，如数字表示和基本运算，列表及列表操作等，网络上有很多教程，我也写过[一篇](https://www.everseenflash.com/CS/Snippets/Type%20Metaprogram.html)，下面选取[type-challenges](https://github.com/type-challenges/type-challenges)标记为“地狱”难度的两道题目为例说明这一点：
 
 1.  [获取只读字段](https://github.com/type-challenges/type-challenges/blob/main/questions/00005-extreme-readonly-keys/README.zh-CN.md)
 
@@ -419,7 +419,7 @@ type x = union_to_tuple<1 | 2 | 3>; // [1, 2, 3]
 
 最后是Intersection转Tuple完成闭环。特别一提，`string`、`number`等Primitive类型相交集之后得到的是`never`，是没办法还原出原来的类型的，所以我们主要谈论的是对象类型的交集。
 
-实现的难点和分解Union类似，在没有额外信息的情况下，该如何提取出Intersection每个项呢？本来从交集得到原始集合听起来就匪夷所思，交集类型也不像联合类型那样有分派特性，因此还是依赖TSC的实现细节。还记得前面的`is_identical`吗？它会将`{a:1}&{b:2}`和`{a:1,b:2}`判断为不相等，这就是我们实现的关键。方法其实很笨，先把Intersection转为等价的对象类型，求出所有属性的子集，作为组合成对象类型的“原子”，将这些对象类型相互组合（等价于将对象类型构成的大集合再求一次子集），然后看各个集合内部元素相交是否与原有的交集类型相等，相等则该集合就是解。集合的子集数量是有限的，所以算法一定会终止，只是很低效，因为子集个数是2的幂次，两次求子集意味着回溯树非常庞大，大到tsserver提示`Type instantiation is excessively deep and possibly infinite.`以及我的IDE一度卡爆。
+实现的难点和分解Union类似，在没有额外信息的情况下，该如何提取出Intersection每个项呢？本来从交集得到原始集合听起来就匪夷所思，交集类型也不像联合类型那样有分派特性，因此还是依赖TSC的实现细节。还记得前面的`is_identical`吗？它会将`{a:1}&{b:2}`和`{a:1,b:2}`判断为不相等，这就是我们实现的关键。方法其实很笨，先把Intersection转为等价的对象类型，求出所有属性的子集，作为组合成对象类型的“原子”，将这些对象类型相互组合（等价于将各子集构成的大集合再求一次子集），然后看各个集合内部元素相交是否与原有的交集类型相等，相等则该集合就是解。集合的子集数量是有限的，所以算法一定会终止，只是很低效，因为子集个数是2的幂次，两次求子集意味着回溯树非常庞大，大到tsserver提示`Type instantiation is excessively deep and possibly infinite.`以及我的IDE一度卡爆。
 
 ```ts
 // 关键技巧
