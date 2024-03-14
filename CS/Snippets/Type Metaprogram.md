@@ -595,10 +595,10 @@ template<char Name>
 struct placeholder: expr {
   static constexpr char name = Name;
 
-  template<typename Val> // [!code  ++]
-  auto operator=(Val val) const { // [!code  ++]
+  template<typename Val>                // [!code  ++]
+  auto operator=(Val val) const {       // [!code  ++]
     return equation<Name, Val> { val }; // [!code  ++]
-  } // [!code  ++]
+  }                                     // [!code  ++]
 
   friend std::ostream& operator<<(std::ostream& out, placeholder<Name> const& ph) {
     return out << ph.name;
@@ -625,10 +625,10 @@ struct placeholder: expr {
     return equation<Name, Val> { val };
   }
 
-  template<typename ...Args> // [!code ++]
+  template<typename ...Args>            // [!code ++]
   auto operator()(Args... args) const { // [!code ++]
-    return invoke(*this, args...); // [!code ++]
-  } // [!code ++]
+    return invoke(*this, args...);      // [!code ++]
+  }                                     // [!code ++]
 
   friend std::ostream& operator<<(std::ostream& out, placeholder<Name> const& ph) {
     return out << ph.name;

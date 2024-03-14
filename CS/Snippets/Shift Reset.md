@@ -119,18 +119,8 @@ Racket确实有这样的机制，叫做`call-with-composable-continuation`，别
                  (set! i (+ i 1))))))
 ```
 
-最后才是原定为本文主角的控制原语`prompt/control`和`reset/shift`，它们能实现的控制流都可以用`call/prompt`配合`call/cc`、`call/comp`实现。Racket文档上给出了这些原语的实质，`prompt`和`reset`其实都是`call/prompt`的变体，只是`control`和`shift`的实现上我感觉还需要编译器对控制流进行调整：
+最后才是原定为本文主角的控制原语`prompt/control`和`reset/shift`，它们能实现的控制流都可以用`call/prompt`配合`call/cc`、`call/comp`实现。Racket文档上给出了这些原语的实质，`prompt`和`reset`其实都是`call/prompt`的变体，只是`control`和`shift`的实现上我感觉还需要宏的帮助。
 
-```scheme
-(prompt val) => val
-(prompt E[(control k expr)]) => (prompt ((lambda (k) expr)
-                                         (lambda (v) E[v])))
-; where E has no prompt
-```
-
-```scheme
-(reset val) => val
-(reset E[(shift k expr)]) => (reset ((lambda (k) expr)
-                                     (lambda (v) (reset E[v]))))
-; where E has no reset
-```
+:::tip
+推荐阅读：[https://andrebask.github.io/thesis/](https://andrebask.github.io/thesis/)，特别是其中关于`TopLevelhandler`的讨论。
+:::
