@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@vueuse/core": "^10.7.2",
+    "codejar": "^4.2.0",
     "lxgw-wenkai-lite-webfont": "^1.7.0",
     "markdown-it-footnote": "^3.0.3",
     "markdown-it-mathjax3": "^4.3.2"

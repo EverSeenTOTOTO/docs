@@ -1,6 +1,16 @@
+<script setup>
+import SquarePlayground from '@vp/SquarePlayground.vue'
+</script>
+
 # Square <Badge type="warning" text="WIP" />
 
-[Square](https://github.com/EverSeenTOTOTO/square)是最近上班摸鱼时开发的一个玩具语言， 主要目的有两个：一是以前实现过一个支持一类函数和一类延续的解释器，对自己的这门玩具语言有不少新想法，一直想写个编译器及相应的虚拟机实现，哪怕是最简单的自定义指令集堆栈机也很不错；二是采取 “learning by the hard way” 的模式，强迫在Rust `no_std`条件下编写并尽可能减少外部依赖，深入实践下Rust，同时构建为WASM，这样既可以复用自身各种前端技能，比如我打算等虚拟机大体完工之后再做的可视化交互环境；也因为在不依赖 emscripten、wasm_bindgen 等工具的情况下加载WASM并与宿主环境交互，变相又学到了不少WASM的知识。整个过程中有很多经验值得记录。
+[Square](https://github.com/EverSeenTOTOTO/square)是最近上班摸鱼时开发的一个玩具语言， 主要目的有两个：一是以前实现过一个支持一类函数和一类延续的解释器，对自己的这门玩具语言有不少新想法，一直想写个编译器及相应的虚拟机实现，哪怕是最简单的自定义指令集堆栈机也很不错；二是采取 “learning by the hard way” 的模式，强迫在Rust `no_std`条件下编写并尽可能减少外部依赖，深入实践下Rust，同时构建为WASM，这样既可以复用自身各种前端技能，比如我打算等虚拟机大体完工之后再做的可视化交互环境；也因为在不依赖 emscripten、wasm_bindgen 等工具的情况下加载WASM并与宿主环境交互，变相又学到了不少WASM的知识。整个过程中有些理解值得记录。
+
+## Playground
+
+这里的 Playground 基于一个轻量的编辑器[codejar](https://github.com/antonmedv/codejar)制作。
+
+<SquarePlayground />
 
 ## 一些准备工作
 

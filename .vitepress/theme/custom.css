@@ -22,3 +22,7 @@
 .VPDoc.has-aside .content-container {
   max-width: 880px !important;
 }
+
+.vp-doc h2 {
+  margin: 24px 0 16px;
+}

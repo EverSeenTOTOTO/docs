@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onUnmounted } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { useData } from 'vitepress'
-import { useMediaQuery } from '@vueuse/core'
+import { useMediaQuery } from '@vueuse/core';
+import { useStep } from '../hooks/useStep';
 
 const isSmallScreen = useMediaQuery('(max-width: 1024px)');
 const { isDark } = useData()
@@ -23,9 +24,10 @@ const bits = reactive(Array.from({ length: SIZE * SIZE }, () => false));
 const generation = ref(0);
 const alive = computed(() => bits.filter(Boolean).length);
 
-let interval: NodeJS.Timeout | null = null;
 
 const toggleBit = (index: number) => bits.splice(index, 1, !bits[index]);
+
+
 const tick = () => {
   if (alive.value === 0) return;
 
@@ -60,11 +62,9 @@ const tick = () => {
   bits.splice(0, bits.length, ...newBitMap);
   generation.value++;
 }
-const pause = () => clearInterval(interval);
-const auto = () => {
-  pause();
-  interval = setInterval(tick, 300)
-}
+
+const { pause, play } = useStep(tick);
+
 const reset = () => {
   pause();
   generation.value = 0;
@@ -72,8 +72,6 @@ const reset = () => {
     bits[i] = false;
   }
 }
-
-onUnmounted(pause)
 
 const pressed = ref(false);
 const updated = new Map<number, boolean>();
@@ -99,7 +97,7 @@ const handlePointerUp = () => {
       <span>Generation: {{ generation }}</span>
       <span>Alive: {{ alive }}</span>
       <button :style="{ marginInlineStart: 'auto' }" @click="tick">Tick</button>
-      <button @click="auto">Auto</button>
+      <button @click="play">Auto</button>
       <button @click="pause">Pause</button>
       <button @click="reset">Reset</button>
     </div>
@@ -114,7 +112,6 @@ const handlePointerUp = () => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-
 }
 
 .container {
@@ -157,6 +154,7 @@ const handlePointerUp = () => {
   >button {
     padding-inline: 6px;
     border-radius: 3px;
+    font-weight: bold;
 
     &:active {
       opacity: 0.6;
