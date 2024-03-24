@@ -8,7 +8,7 @@ import SquarePlayground from '@vp/SquarePlayground.vue'
 
 ## Playground
 
-这里的 Playground 基于一个轻量的编辑器[codejar](https://github.com/antonmedv/codejar)制作。
+这个简陋的 Playground 基于[xterm.js](https://xtermjs.org/)和轻量编辑器[codejar](https://github.com/antonmedv/codejar)制作。
 
 <SquarePlayground />
 
