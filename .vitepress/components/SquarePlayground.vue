@@ -1,13 +1,26 @@
 <script setup lang="ts">
-import { CodeJar } from 'codejar';
-import { onMounted, onUpdated, ref, nextTick } from 'vue';
+import { onMounted, onUpdated, computed, ref, nextTick } from 'vue';
 import { useSquare, INITIAL_CODE } from '../hooks/useSquare';
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from 'xterm-addon-fit';
+import type { CodeJar } from 'codejar';
+import * as xterm from '@xterm/xterm';
 import { useScrollLock } from '@vueuse/core';
 import '@xterm/xterm/css/xterm.css';
 
-const docScrollLocked = useScrollLock(document.documentElement);
+import { useData } from 'vitepress'
+
+const { isDark } = useData()
+
+const colors = computed(() => isDark.value
+  ? {
+    btnBg: '#2a8148',
+  }
+  : {
+    btnBg: '#c6f1d5',
+  });
+
+const { Terminal } = xterm as any;
+
+const docScrollLocked = useScrollLock(document?.documentElement);
 
 const toggleLock = () => {
   docScrollLocked.value = !docScrollLocked.value;
@@ -16,19 +29,22 @@ const toggleLock = () => {
 const editorElement = ref<HTMLDivElement>(null);
 const editor = ref<CodeJar>(null);
 const terminalElement = ref<HTMLDivElement>(null);
-const terminal = ref<Terminal>(null);
+const terminal = ref<typeof Terminal>(null);
 // const lineNumbers = ref<number[]>([]);
 
 const highlight = (editor: HTMLElement) => {
   const code = editor.textContent || "";
 
+  // TODO
   // const len = code.split("\n").length;
   // lineNumbers.value = Array.from({ length: len > 10 ? len : 10 }).map((_, index) => index + 1)
 };
 
 onMounted(() => {
-  editor.value = CodeJar(editorElement.value, highlight);
-  editor.value.updateCode(INITIAL_CODE);
+  import('codejar').then(({ CodeJar }) => {
+    editor.value = CodeJar(editorElement.value, highlight);
+    editor.value.updateCode(INITIAL_CODE);
+  });
 
   terminal.value = new Terminal({
     rows: 6,
@@ -40,17 +56,12 @@ onMounted(() => {
     }
   });
 
-  const fitAddon = new FitAddon()
-  terminal.value.loadAddon(fitAddon);
   terminal.value.open(terminalElement.value);
-
-  fitAddon.fit();
 });
 
 const square = useSquare(editor, terminal);
 
 const instructionUL = ref<HTMLUListElement | null>(null);
-const callframeUL = ref<HTMLUListElement | null>(null);
 
 onUpdated(() => {
   nextTick(() => {
@@ -66,7 +77,7 @@ onUpdated(() => {
 
 </script>
 <template>
-  <div class="container">
+  <div class="container" :style="{ '--btnBg': colors.btnBg }">
     <div class="editor" ref="editorElement" />
     <div class="playground">
       <ul class="instructions" ref="instructionUL">
@@ -76,7 +87,7 @@ onUpdated(() => {
       </ul>
       <ul class="callframes">
         <li v-for="(callframe, index) in square.callframes.value" :key="index">
-          <pre>{{ callframe }}</pre>
+          {{ callframe }}
         </li>
       </ul>
     </div>
@@ -158,8 +169,8 @@ onUpdated(() => {
       border-inline-start: 1px solid #ddd;
       padding-inline: 4px;
 
-      & pre {
-        margin: 0;
+      >li {
+        white-space: pre;
       }
     }
   }
@@ -184,7 +195,7 @@ onUpdated(() => {
       }
 
       &:hover {
-        background-color: #c6f1d5;
+        background-color: var(--btnBg);
       }
     }
   }
