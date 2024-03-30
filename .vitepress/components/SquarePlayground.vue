@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUpdated, computed, ref, nextTick } from 'vue';
+import { onMounted, onUpdated, computed, watch, ref, nextTick } from 'vue';
 import { useSquare, INITIAL_CODE } from '../hooks/useSquare';
 import type { CodeJar } from 'codejar';
 import * as xterm from '@xterm/xterm';
 import { useScrollLock } from '@vueuse/core';
 import '@xterm/xterm/css/xterm.css';
+import { onScrollEnd } from '../hooks/useScrollEnd';
 
 import { useData } from 'vitepress'
 
@@ -12,9 +13,21 @@ const { isDark } = useData()
 
 const colors = computed(() => isDark.value
   ? {
+    string: '#9ECBFF',
+    number: '#79B8FF',
+    keyword: '#F97583',
+    reserved: '#B392F0',
+    comment: '#6A737D',
+
+
     btnBg: '#2a8148',
   }
   : {
+    string: '#032F62',
+    number: '#005CC5',
+    keyword: '#D73A49',
+    reserved: '#6F42C1',
+    comment: '#6A737D',
     btnBg: '#c6f1d5',
   });
 
@@ -30,15 +43,39 @@ const editorElement = ref<HTMLDivElement>(null);
 const editor = ref<CodeJar>(null);
 const terminalElement = ref<HTMLDivElement>(null);
 const terminal = ref<typeof Terminal>(null);
-// const lineNumbers = ref<number[]>([]);
+
+const Keywords = [
+  'let', 'if', 'cond', 'while', 'callcc', 'vec', 'obj',
+  'set', 'get', 'println', 'print', 'at', 'splice', 'len',
+  'slice', 'typeof', 'begin'
+]
+const KeywordPattern = new RegExp(`(?<=(\\s|\\[))(${Keywords.join('|')})\\s`, 'g')
+const Reserved = [
+  'true', 'false', 'nil',
+]
+const Property = [
+  '__set__', '__get__'
+]
+const ReservedPattern = new RegExp(`(?<=(\\s|\\[))(${Reserved.join('|')})`, 'g')
+const PropertyPattern = new RegExp(`(?<=\\.)(${Property.join('|')})`, 'g')
+const StringPattern = /'([^'\\]|\\.)*'/g
+const CommentPattern = /;([^;\\]|\\.)*?(;|\n)/g
+const NumberPattern = /-?\d+\.?\d*(e|E-?\d+)?/g
 
 const highlight = (editor: HTMLElement) => {
-  const code = editor.textContent || "";
-
-  // TODO
-  // const len = code.split("\n").length;
-  // lineNumbers.value = Array.from({ length: len > 10 ? len : 10 }).map((_, index) => index + 1)
+  let code = editor.textContent || "";
+  code = code.replace(NumberPattern, `<span style="color: ${colors.value.number}">$&</span>`)
+  code = code.replace(KeywordPattern, `<span style="color: ${colors.value.keyword}">$&</span>`)
+  code = code.replace(ReservedPattern, `<span style="color: ${colors.value.reserved}">$&</span>`)
+  code = code.replace(PropertyPattern, `<span style="color: ${colors.value.keyword}">$&</span>`)
+  code = code.replace(StringPattern, `<span style="color: ${colors.value.string}">$&</span>`)
+  code = code.replace(CommentPattern, `<span style="color: ${colors.value.comment}">$&</span>`)
+  editor.innerHTML = code
 };
+
+watch(colors, () => {
+  highlight(editorElement.value);
+});
 
 onMounted(() => {
   import('codejar').then(({ CodeJar }) => {
@@ -62,15 +99,26 @@ onMounted(() => {
 const square = useSquare(editor, terminal);
 
 const instructionUL = ref<HTMLUListElement | null>(null);
+const callframUL = ref<HTMLUListElement | null>(null);
 
 onUpdated(() => {
   nextTick(() => {
     const instructionLIs = Array.from(instructionUL.value?.children);
-    const nextInstruction = instructionLIs.find((_, index) => index === square.pc.value);
+    const nextInstruction = instructionLIs.find((_, index) => index === square.pc.value)
 
     nextInstruction?.scrollIntoView({
       behavior: 'smooth',
       block: 'nearest'
+    });
+
+    onScrollEnd(instructionUL.value, () => {
+      const callframeLIs = Array.from(callframUL.value?.children);
+      const lastCallframe = callframeLIs[callframeLIs.length - 1];
+
+      lastCallframe?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
     });
   });
 })
@@ -79,18 +127,6 @@ onUpdated(() => {
 <template>
   <div class="container" :style="{ '--btnBg': colors.btnBg }">
     <div class="editor" ref="editorElement" />
-    <div class="playground">
-      <ul class="instructions" ref="instructionUL">
-        <li v-for="(inst, index) in square.instructions.value" :key="index" class="instruction" :class="{
-          'instruction--active': index === square.pc.value
-        }">{{ `${index}: ${inst}` }}</li>
-      </ul>
-      <ul class="callframes">
-        <li v-for="(callframe, index) in square.callframes.value" :key="index">
-          {{ callframe }}
-        </li>
-      </ul>
-    </div>
 
     <div class="operation">
       <span>Console: </span>
@@ -102,12 +138,26 @@ onUpdated(() => {
       <button @click="square.run">Run</button>
     </div>
 
+    <div class="playground">
+      <ul class="instructions" ref="instructionUL">
+        <li v-for="(inst, index) in square.instructions.value" :key="index" class="instruction" :class="{
+          'instruction--active': index === square.pc.value
+        }">{{ `${index}: ${inst}` }}</li>
+      </ul>
+      <ul class="callframes" ref="callframUL">
+        <li v-for="(callframe, index) in square.callframes.value" :key="index">
+          {{ callframe }}
+        </li>
+      </ul>
+    </div>
+
     <div ref="terminalElement" class="console" />
   </div>
 </template>
 <style scoped>
 .container {
   background-color: var(--vp-code-block-bg);
+  border: 1px solid #ddd;
 
   & ul {
     margin: 0;
@@ -124,6 +174,7 @@ onUpdated(() => {
     height: 240px;
     overflow: auto;
     padding: 8px;
+    border-block-end: 1px solid #ddd;
 
     & .line-numbers {
       position: absolute;
@@ -142,16 +193,15 @@ onUpdated(() => {
   & .playground {
     display: flex;
     flex-wrap: nowrap;
-    padding: 8px;
     height: 240px;
-    border: 1px solid #ddd;
+    border-block-end: 1px solid #ddd;
 
     & .instructions {
       overflow: auto;
       flex: 2;
       display: flex;
       flex-direction: column;
-      padding-inline: 4px;
+      padding: 4px;
 
       .instruction {
         padding: 2px;
@@ -167,7 +217,7 @@ onUpdated(() => {
       overflow-y: auto;
       flex: 3;
       border-inline-start: 1px solid #ddd;
-      padding-inline: 4px;
+      padding: 4px;
 
       >li {
         white-space: pre;
@@ -179,7 +229,7 @@ onUpdated(() => {
     display: flex;
     flex-wrap: wrap;
     padding: 8px;
-    margin-block: 24px 12px;
+    border-block-end: 1px solid #ddd;
 
     &>span {
       flex: 0 0 25%;
