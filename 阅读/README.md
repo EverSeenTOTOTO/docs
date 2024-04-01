@@ -53,3 +53,5 @@
   ChatGPT 的用户总是与一个空白文本框进行对抗，通常是空白文本框获胜。
 * 理想的 semver 是 breaking.feat.bugfix，现实的 semver 是 breaking.breaking.breaking。
 * 我们将在1月25日震惊世界。（PayPal CEO）
+* There are two ways of constructing a software design: One way is to make it so simple that there are obviously no deficiencies and the other way is to make it so complicated that there are no obvious deficiencies. The first method is far more difficult.
+* Perfection is reached, not when there is no longer anything to add, but when there is no longer anything to take away.

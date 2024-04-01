@@ -6,7 +6,9 @@ export default (md: MarkdownIt) => {
   };
 
   md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
-    tokens[idx].attrSet('target', '_blank');
+    if (/^http/.test(tokens[idx].attrGet("href"))) {
+      tokens[idx].attrSet('target', '_blank');
+    }
 
     return defaultRender(tokens, idx, options, env, self);
   };
