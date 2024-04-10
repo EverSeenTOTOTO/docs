@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed, reactive } from 'vue'
-import { onClickOutside } from '@vueuse/core'
 import Modal from './Modal.vue'
 
 const image = ref(null)
@@ -10,8 +9,6 @@ const scaleRate = reactive({ w: 1, h: 1 });
 const closePreview = () => {
   url.value = '';
 };
-
-onClickOutside(image, closePreview)
 
 const bindClick = (img: HTMLImageElement) => {
   img.addEventListener('click', () => {
@@ -56,7 +53,7 @@ onUnmounted(() => {
 
 </script>
 <template>
-  <Modal :open="open" @close="closePreview">
+  <Modal :open="open" @maskClick="closePreview" @wrapClick="closePreview">
     <img ref="image" :src="url" :alt="url"
       :style="{ '--scaleWidth': `${scaleRate.h}%`, '--scaleHeight': `${scaleRate.w}%` }" />
   </Modal>

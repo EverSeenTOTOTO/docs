@@ -3,22 +3,22 @@ import { toRef, watch } from 'vue'
 
 export default {
   props: ['open'],
-  emits: ['close'],
+  emits: ['maskClick', 'wrapClick'],
   setup(props, { emit }) {
     const open = toRef(props, "open")
-    const handleClose = () => emit("close");
 
-    watch(open, (newVal) => {
-      if (newVal) {
-        document.body.style.overflowY = "hidden";
-      } else {
-        document.body.style.overflowY = "auto";
-      }
-    });
+    const onMaskClick = () => {
+      emit('maskClick')
+    }
+    const onWrapClick = () => {
+      emit('wrapClick')
+    }
+
 
     return {
       open,
-      handleClose,
+      onMaskClick,
+      onWrapClick
     };
   }
 }
@@ -28,10 +28,10 @@ export default {
     <Teleport to="#app">
       <div class="modal">
         <Transition name="fade">
-          <div v-if="open" class="mask" @click="handleClose" />
+          <div v-if="open" class="mask" @click="onMaskClick" />
         </Transition>
         <Transition name="zoom">
-          <div v-if="open" class="wrap">
+          <div v-if="open" class="wrap" @click="onWrapClick">
             <slot />
           </div>
         </Transition>
@@ -80,7 +80,7 @@ export default {
   animation: fadeOut 0.3s cubic-bezier(0.55, 0, 0.55, 0.2);
 }
 
-@keyframes fade-in {
+@keyframes fadeIn {
   0% {
     opacity: 0;
   }
@@ -101,7 +101,7 @@ export default {
 }
 
 .zoom-enter-active {
-  animation: zoomIn 0.3s cubic-bezier(0.08, 0.82, 0.17, 1);
+  animation: zoomIn 1s cubic-bezier(0.08, 0.82, 0.17, 1);
   animation-fill-mode: both;
 }
 

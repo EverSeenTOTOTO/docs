@@ -346,7 +346,7 @@ pub fn add_local(&mut self, name: String) {
 
 ## 对象的实现
 
-假如在虚拟机中，我们要实现`println`的功能，该怎么做？由于`println`涉及到系统接口，它通常是宿主环境注入的方法，那么我们设计一个`SYSCALL`指令是否就够用了呢？不够好，因为我们通常会希望它的表现和其他函数一样，也能够作为一类函数传来传去，因此我们需要拓展一下虚拟机运行时值的定义，它不仅仅可以是一个闭包，也可能是一个`Syscall`：
+假如在虚拟机中，我们要实现`println`的功能，该怎么做？由于`println`涉及到系统接口，它通常是宿主环境注入的方法，那么我们设计一个`SYSCALL`指令是否就够用？还不够，因为我们一般会希望它的表现和其他函数一样，也能够作为一类函数传来传去，因此我们需要拓展一下虚拟机运行时值的定义，它不仅仅可以是一个闭包，也可能是一个`Syscall`：
 
 ```rust
 #[derive(Debug, Clone, PartialEq)]
@@ -444,7 +444,7 @@ pub fn restore_context(&mut self, context: Vec<Rc<RefCell<CallFrame>>>) {
 }
 ```
 
-`CALL`指令遇到一个`Contiuation`的时候，恢复现场，依然简单粗暴：
+`CALL`指令遇到一个`Contiuation`的时候，恢复现场，并将传递给`cc`的参数作为程序后续执行的参数：
 
 ```rust
 pub fn call(
