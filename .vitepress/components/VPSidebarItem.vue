@@ -58,8 +58,8 @@ function onCaretClick() {
 <template>
   <component :is="sectionTag" class="VPSidebarItem" :class="classes">
     <div v-if="item.text" class="item" :role="itemRole" v-on="item.items
-      ? { click: onItemInteraction, keydown: onItemInteraction }
-      : {}
+    ? { click: onItemInteraction, keydown: onItemInteraction }
+    : {}
     " :tabindex="item.items && 0">
       <div class="indicator" />
 

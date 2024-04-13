@@ -1,39 +1,56 @@
-# 武汉
+---
+layout: page
+---
 
-1.  后襄河公园
+<script setup>
+import ImageGallery from '@vp/ImageGallery.vue';
 
-     <img src="./park.webp" width="800">
+const items = [
+  {
+    src: './park.webp',
+    desc: '后襄河公园'
+  },
+  {
+    src: './time.webp',
+    desc: '新时代'
+  },
+  {
+    src: './HouGuanLake.webp',
+    desc: '后官湖'
+  },
+  {
+    src: './HouGuanLake2.webp',
+    desc: '后官湖'
+  },
+  {
+    src: './HouGuanLake3.webp',
+    desc: '后官湖'
+  },
+  {
+    src: './bridge-4.webp',
+    desc: '无题'
+  },
+  {
+    src: './city-night-wh.webp',
+    desc: '晴川阁，从前同事那里盗得'
+  },
+  {
+    src: './bridge.webp',
+    desc: '汉江：江汉桥'
+  },
+  {
+    src: './bridge-3.webp',
+    desc: '汉江：晴川桥'
+  },
+  {
+    src: './27.webp',
+    desc: '二七长江大桥'
+  },
+]
+</script>
 
-2.  新时代
-
-     <img src="./time.webp" width="800">
-
-3.  后官湖，因为遥远而觉得美
-
-     <img src="./HouGuanLake.webp" width="800" />
-     <img src="./HouGuanLake2.webp" width="800" />
-     <img src="./HouGuanLake3.webp" width="800" />
-
-4.  无题
-
-     <img src="./bridge-4.webp" width="800" />
-
-5. 前同事拍的，应该是晴川阁那里，盗了
-
-     <img src="./city-night-wh.webp" width="800" />
-
-## 武汉的桥
-
-说来也怪，武汉的长江大桥几乎全部走过，拍下的照片筛了一张又一张，反而是汉江的照片留下来不少。
-
-1.  汉江：江汉桥
-
-    <img src="./bridge.webp" width="400" />
-
-2.  汉江：晴川桥
-
-    <img src="./bridge-3.webp" width="800" />
-
-3.  二七长江大桥
-
-     <img src="./27.webp" width="800" />
+<ImageGallery :items="items">
+  <template #title>
+    <h1>武汉</h1>
+  </template>
+</ImageGallery>

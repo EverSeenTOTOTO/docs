@@ -1,4 +1,4 @@
-import { ref, Ref, computed, onUnmounted } from 'vue';
+import { ref, Ref, computed, } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { CodeJar } from 'codejar';
 // @ts-ignore
@@ -81,7 +81,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const dump_instructions = () => {
     if (instsAddr.value < 0) return [];
 
-    const instructions = [];
+    const instructions: string[] = [];
     const write = (message: string) => instructions.push(message);
 
     redirect(write);
@@ -94,7 +94,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const dump_callframes = () => {
     if (vmAddr.value < 0) return [];
 
-    const callframes = [];
+    const callframes: string[] = [];
     const write = (message: string) => callframes.push(message);
 
     redirect(write);

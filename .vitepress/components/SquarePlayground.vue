@@ -39,9 +39,9 @@ const toggleLock = () => {
   docScrollLocked.value = !docScrollLocked.value;
 };
 
-const editorElement = ref<HTMLDivElement>(null);
-const editor = ref<CodeJar>(null);
-const terminalElement = ref<HTMLDivElement>(null);
+const editorElement = ref<HTMLDivElement | null>(null);
+const editor = ref<CodeJar | null>(null);
+const terminalElement = ref<HTMLDivElement | null>(null);
 const terminal = ref<typeof Terminal>(null);
 
 const Keywords = [
@@ -74,12 +74,12 @@ const highlight = (editor: HTMLElement) => {
 };
 
 watch(colors, () => {
-  highlight(editorElement.value);
+  highlight(editorElement.value!);
 });
 
 onMounted(() => {
   import('codejar').then(({ CodeJar }) => {
-    editor.value = CodeJar(editorElement.value, highlight);
+    editor.value = CodeJar(editorElement.value!, highlight);
     editor.value.updateCode(INITIAL_CODE);
   });
 
@@ -101,27 +101,32 @@ const square = useSquare(editor, terminal);
 const instructionUL = ref<HTMLUListElement | null>(null);
 const callframUL = ref<HTMLUListElement | null>(null);
 
+const alignLastCallframe = () => {
+  const callframeLIs = Array.from(callframUL.value!.children);
+  const lastCallframe = callframeLIs[callframeLIs.length - 1];
+  lastCallframe?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'nearest'
+  });
+}
+
 onUpdated(() => {
   nextTick(() => {
-    const instructionLIs = Array.from(instructionUL.value?.children);
+    const instructionLIs = Array.from(instructionUL.value!.children);
     const nextInstruction = instructionLIs.find((_, index) => index === square.pc.value)
 
+    onScrollEnd(instructionUL.value!, alignLastCallframe);
     nextInstruction?.scrollIntoView({
       behavior: 'smooth',
       block: 'nearest'
     });
-
-    onScrollEnd(instructionUL.value, () => {
-      const callframeLIs = Array.from(callframUL.value?.children);
-      const lastCallframe = callframeLIs[callframeLIs.length - 1];
-
-      lastCallframe?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
-      });
-    });
   });
 })
+
+const step = () => {
+  alignLastCallframe();
+  square.step();
+}
 
 </script>
 <template>
@@ -134,15 +139,15 @@ onUpdated(() => {
         {{ docScrollLocked ? 'ScrollUnlock' : 'ScrollLock' }}
       </button>
       <button @click="square.compile">Compile</button>
-      <button @click="square.step">Step</button>
+      <button @click="step">Step</button>
       <button @click="square.run">Run</button>
     </div>
 
     <div class="playground">
       <ul class="instructions" ref="instructionUL">
         <li v-for="(inst, index) in square.instructions.value" :key="index" class="instruction" :class="{
-          'instruction--active': index === square.pc.value
-        }">{{ `${index}: ${inst}` }}</li>
+    'instruction--active': index === square.pc.value
+  }">{{ `${index}: ${inst}` }}</li>
       </ul>
       <ul class="callframes" ref="callframUL">
         <li v-for="(callframe, index) in square.callframes.value" :key="index">

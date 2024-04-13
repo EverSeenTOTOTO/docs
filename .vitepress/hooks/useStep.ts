@@ -1,6 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 
-export const useStep = (step: () => void, timeout = 300) => {
+export const useStep = (step: () => void) => {
   const interval = ref<NodeJS.Timeout | null>(null)
 
   const pause = () => clearInterval(interval.value!)

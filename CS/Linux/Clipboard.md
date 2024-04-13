@@ -6,26 +6,28 @@
 
 ```lua
 -- 在拷贝后将内容写入xclip等中介Buffer
+local has_mac = vim.fn.has("mac")
+local xdg_session_type = vim.api.nvim_command("echo $XDG_SESSION_TYPE")
+local is_x11 = xdg_session_type == "x11" and vim.api.nvim_command("command -v xclip") ~= ""
+local is_wayland = xdg_session_type == "wayland" and vim.api.nvim_command("command -v wayland") ~= ""
+
 autocmd("TextYankPost", {
   pattern = "*",
   callback = function()
-    if vim.fn.has("mac") then
+    if has_mac then
       vim.cmd([[call system('pbcopy && tmux set-buffer "$(reattach-to-user-namespace pbpaste)"', @")]])
     else
-      local type = vim.fn.nvim_command('echo $XDG_SESSION_TYPE')
-
-      if type == 'x11' and vim.fn.nvim_command('command -v xclip') ~= '' then
+      if is_x11 then
         -- xclip
         vim.cmd([[call system('xclip -i -sel c && tmux set-buffer $(xclip -o -sel c)', @")]])
-      elseif type == 'wayland' and vim.fn.nvim_command('command -v wayland') ~= '' then
+      elseif is_wayland then
         -- wl-clipboard
         vim.cmd([[call system('wl-copy && tmux set-buffer $(wl-paste)', @")]])
       end
     end
 
-    -- highlight yanked text for 700ms
-    vim.highlight.on_yank { higroup = "IncSearch", timeout = 700 }
-  end
+    vim.highlight.on_yank({ higroup = "IncSearch", timeout = 700 })
+  end,
 })
 ```
 

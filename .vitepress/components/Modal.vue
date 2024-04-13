@@ -1,29 +1,16 @@
-<script lang="ts">
-import { ref, toRef, watch } from 'vue'
+<script setup lang="ts">
+import { ref, toRef, defineProps, defineEmits } from 'vue'
 
-export default {
-  props: ['open', 'transformOrigin'],
-  emits: ['maskClick', 'wrapClick'],
-  setup(props, { emit }) {
-    const open = toRef(props, "open")
-    const transformOrigin = toRef(props, "transformOrigin")
-    const modal = ref(null)
+const { open, transformOrigin } = defineProps(['open', 'transformOrigin'])
+const emit = defineEmits(['maskClick', 'wrapClick'])
 
-    const onMaskClick = () => {
-      emit('maskClick')
-    }
-    const onWrapClick = () => {
-      emit('wrapClick')
-    }
+const modal = ref(null)
 
-    return {
-      open,
-      transformOrigin,
-      modal,
-      onMaskClick,
-      onWrapClick
-    };
-  }
+const onMaskClick = () => {
+  emit('maskClick')
+}
+const onWrapClick = () => {
+  emit('wrapClick')
 }
 </script>
 <template>
@@ -48,6 +35,7 @@ export default {
 .modal {
   position: relative;
   width: auto;
+  z-index: 1000;
 
   .mask {
     position: fixed;
@@ -106,7 +94,7 @@ export default {
 }
 
 .zoom-enter-active {
-  animation: zoomIn 1s cubic-bezier(0.08, 0.82, 0.17, 1);
+  animation: zoomIn 0.3s cubic-bezier(0.08, 0.82, 0.17, 1);
   animation-fill-mode: both;
 }
 

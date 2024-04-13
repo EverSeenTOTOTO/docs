@@ -9,7 +9,7 @@ const scrollTop = () => {
 };
 </script>
 <template>
-  <div v-if="y > 600" class="scrollTop" @click="scrollTop">Scroll to top↑</div>
+  <div class="scrollTop" @click="scrollTop" :style="{ '--range': '800px' }">Scroll to top↑</div>
 </template>
 <style scoped>
 .scrollTop {
@@ -18,5 +18,19 @@ const scrollTop = () => {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+
+  animation: fadeIn 1s linear forwards;
+  animation-timeline: scroll(root);
+  animation-range: 0 var(--range);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 </style>
