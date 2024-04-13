@@ -145,7 +145,7 @@ export default defineConfig({
         },
         {
           find: /^.*\/VPSidebarItem\.vue$/,
-          replacement: resolvePath('./theme/components/VPSidebarItem.vue')
+          replacement: resolvePath('./components/VPSidebarItem.vue')
         }
       ]
     }
