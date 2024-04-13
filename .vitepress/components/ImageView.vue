@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed, reactive } from 'vue'
+import { usePointer } from '@vueuse/core'
 import Modal from './Modal.vue'
 
 const image = ref(null)
 const url = ref('');
 const open = computed(() => url.value !== '');
 const scaleRate = reactive({ w: 1, h: 1 });
+const transformOrigin = ref('0 0');
 const closePreview = () => {
+  transformOrigin.value = `${pointer.x.value}px ${pointer.y.value}px`
   url.value = '';
 };
 
+const pointer = usePointer();
 const bindClick = (img: HTMLImageElement) => {
   img.addEventListener('click', () => {
+    transformOrigin.value = `${pointer.x.value}px ${pointer.y.value}px`
+
     url.value = img.src;
     scaleRate.h = img.height / window.innerHeight * 100;
     scaleRate.w = img.width / window.innerWidth * 100;
@@ -53,7 +59,7 @@ onUnmounted(() => {
 
 </script>
 <template>
-  <Modal :open="open" @maskClick="closePreview" @wrapClick="closePreview">
+  <Modal :transformOrigin="transformOrigin" :open="open" @maskClick="closePreview" @wrapClick="closePreview">
     <img ref="image" :src="url" :alt="url"
       :style="{ '--scaleWidth': `${scaleRate.h}%`, '--scaleHeight': `${scaleRate.w}%` }" />
   </Modal>
@@ -77,4 +83,3 @@ img {
   }
 }
 </style>
-

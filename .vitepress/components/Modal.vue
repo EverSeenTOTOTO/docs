@@ -1,11 +1,13 @@
 <script lang="ts">
-import { toRef, watch } from 'vue'
+import { ref, toRef, watch } from 'vue'
 
 export default {
-  props: ['open'],
+  props: ['open', 'transformOrigin'],
   emits: ['maskClick', 'wrapClick'],
   setup(props, { emit }) {
     const open = toRef(props, "open")
+    const transformOrigin = toRef(props, "transformOrigin")
+    const modal = ref(null)
 
     const onMaskClick = () => {
       emit('maskClick')
@@ -14,9 +16,10 @@ export default {
       emit('wrapClick')
     }
 
-
     return {
       open,
+      transformOrigin,
+      modal,
       onMaskClick,
       onWrapClick
     };
@@ -26,12 +29,14 @@ export default {
 <template>
   <ClientOnly>
     <Teleport to="#app">
-      <div class="modal">
+      <div class="modal" ref="modal">
         <Transition name="fade">
           <div v-if="open" class="mask" @click="onMaskClick" />
         </Transition>
         <Transition name="zoom">
-          <div v-if="open" class="wrap" @click="onWrapClick">
+          <div v-if="open" class="wrap" @click="onWrapClick" :style="{
+            transformOrigin
+          }">
             <slot />
           </div>
         </Transition>
@@ -133,4 +138,3 @@ export default {
   }
 }
 </style>
-
