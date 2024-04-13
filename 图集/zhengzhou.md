@@ -4,14 +4,16 @@ layout: page
 
 <script setup>
 import ImageGallery from '@vp/ImageGallery.vue';
+import cat from './cat.webp'
+import dusk from './dusk.webp'
 
 const items = [
   {
-    src: './cat.webp',
+    src: cat,
     desc: '一只猫'
   },
   {
-    src: './dusk.webp',
+    src: dusk,
     desc: '北龙湖。我总是临近傍晚才出去游荡，因此拍出来的照片也一副萧瑟苍凉的模样'
   }
 ]
