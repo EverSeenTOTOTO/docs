@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRef, defineProps, defineEmits } from 'vue'
+import { ref, defineProps, defineEmits } from 'vue'
 
 const { open, transformOrigin } = defineProps(['open', 'transformOrigin'])
 const emit = defineEmits(['maskClick', 'wrapClick'])

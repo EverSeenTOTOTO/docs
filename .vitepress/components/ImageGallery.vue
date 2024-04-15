@@ -7,7 +7,7 @@ const target = ref(null);
 const onWheel = (e) => {
   if (target.value) {
     target.value.scrollBy({
-      left: e.deltaY * 2.5,
+      left: e.deltaY,
       behavior: 'smooth',
     });
   }
@@ -28,9 +28,9 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
   <div ref="container" class="vp-doc" @wheel="onWheel">
     <slot name="title"></slot>
     <ul ref="target" class="cards" :style="{ '--item-size': itemSize }">
-      <li v-for="{ desc, ...item } in items">
+      <li v-for="{ desc, src } in items">
         <div class="item">
-          <ImageView v-bind="item" />
+          <ImageView class="item__img" :src="src" />
           <div class="item__desc">{{ desc }}</div>
         </div>
       </li>
@@ -46,13 +46,16 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
   max-width: 90vw;
   position: relative;
   margin: 0 auto;
+  padding: 0;
   overflow: auto;
   white-space: nowrap;
-  padding-block: calc(var(--item-size) / 4);
+  padding-block: calc(var(--item-size) / 3);
 
   >li {
     display: inline-block;
     width: var(--item-size);
+    height: var(--item-size);
+    margin: 0;
 
     /* Track this element as it intersects the scrollport */
     view-timeline-name: --li-in-and-out-of-view;
@@ -87,8 +90,8 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
   align-items: center;
   flex-direction: column;
 
-  width: var(--item-size);
-  height: var(--item-size);
+  width: 100%;
+  height: 100%;
   /* Link an animation to the established view-timeline (of the parent li) and have it run during the contain phase */
   animation: linear rotate-cover both;
   animation-timeline: --li-in-and-out-of-view;
@@ -98,9 +101,10 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
 
   will-change: transform;
 
-  >img {
-    max-height: 100%;
-  }
+}
+
+::v-deep(.item__img) {
+  max-height: var(--item-size);
 }
 
 .item__desc {
@@ -150,3 +154,4 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
   }
 }
 </style>
+

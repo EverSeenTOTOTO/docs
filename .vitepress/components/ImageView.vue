@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed, reactive } from 'vue'
+import { ref, reactive } from 'vue'
 import { usePointer } from '@vueuse/core'
 import Modal from './Modal.vue'
 
@@ -28,9 +28,10 @@ const show = () => {
 </script>
 <template>
   <Modal :transformOrigin="transformOrigin" :open="open" @maskClick="closePreview" @wrapClick="closePreview">
-    <img :src="src" :alt="src" :style="{ '--scaleWidth': `${scaleRate.h}%`, '--scaleHeight': `${scaleRate.w}%` }" />
+    <img class="img" :src="src" :alt="src"
+      :style="{ '--scaleWidth': `${scaleRate.h}%`, '--scaleHeight': `${scaleRate.w}%` }" />
   </Modal>
-  <img ref="trigger" :src="src" alt="" @click="show" />
+  <img ref="trigger" v-bind="$attrs" :src="src" :alt="src" @click="show" />
 </template>
 <style>
 .main img {
@@ -39,15 +40,16 @@ const show = () => {
 }
 </style>
 <style scoped>
-img {
+.img {
   max-width: var(--scaleWidth);
   height: 90%;
 }
 
 @media screen and (max-width: 768px) {
-  img {
+  .img {
     max-height: var(--scaleHeight);
     width: 90%;
   }
 }
 </style>
+
