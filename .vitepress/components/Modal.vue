@@ -46,7 +46,6 @@ const onWrapClick = () => {
     background-color: rgba(55, 55, 55, 0.6);
     height: 100%;
     filter: alpha(opacity=50);
-    z-index: 42;
   }
 
   .wrap {
@@ -55,7 +54,7 @@ const onWrapClick = () => {
     right: 0;
     left: 0;
     bottom: 0;
-    z-index: 42;
+    z-index: 1001;
 
     display: flex;
     align-items: center;
