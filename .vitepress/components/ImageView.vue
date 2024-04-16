@@ -20,8 +20,8 @@ const show = () => {
 
   if (!trigger.value) return;
 
-  scaleRate.h = trigger.value!.naturalHeight / window.innerHeight * 100;
-  scaleRate.w = trigger.value!.naturalWidth / window.innerWidth * 100;
+  scaleRate.h = Math.min(trigger.value!.naturalHeight / window.innerHeight * 100, 100);
+  scaleRate.w = Math.min(trigger.value!.naturalWidth / window.innerWidth * 100, 100);
   open.value = true;
 }
 
