@@ -47,7 +47,7 @@ const terminal = ref<typeof Terminal>(null);
 const Keywords = [
   'let', 'if', 'cond', 'while', 'callcc', 'vec', 'obj',
   'set', 'get', 'println', 'print', 'at', 'splice', 'len',
-  'slice', 'typeof', 'begin'
+  'slice', 'typeof', 'begin', 'sleep'
 ]
 const KeywordPattern = new RegExp(`(?<=(\\s|\\[))(${Keywords.join('|')})\\s`, 'g')
 const Reserved = [

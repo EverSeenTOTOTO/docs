@@ -8,7 +8,7 @@ import SquarePlayground from '@vp/SquarePlayground.vue'
 
 ## Playground
 
-这个简陋的 Playground 基于[xterm.js](https://xtermjs.org/)和轻量编辑器[codejar](https://github.com/antonmedv/codejar)制作。语法高亮也是通过正则匹配实现的，并没有 Language Server 支持。
+这个简陋的 Playground 基于[xterm.js](https://xtermjs.org/)和轻量编辑器[codejar](https://github.com/antonmedv/codejar)制作。语法高亮也是通过正则匹配实现的，并没有 Language Server。
 
 <SquarePlayground />
 
@@ -801,3 +801,9 @@ RUSTFLAGS="-C link-arg=-zstack-size=65536" cargo build --target=wasm32-unknown-u
 ```lisp
 (memory (;0;) 2)
 ```
+
+### `sleep`的实现
+
+Square 当然没有内置一个异步运行时，`sleep`的背后其实是宿主环境的`setTimeout`。至于它在WASM程序内部为什么表现的像是同步阻塞了一样，这是因为背后用到了[JSPI](https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md)。简单来说，JSPI提供了一对API：`WebAssembly.Suspending`和`WebAssembly.promising`，当我们想要在WASM程序内部调用Web环境定义的异步方法`foo`时，可以将导入的`foo`用`WebAssembly.Suspending`包裹，然后将WASM程序导出的、调用`foo`的那个方法用`WebAssembly.promising`包裹。当WASM程序执行到`foo`时会被挂起，直到异步方法`foo`完成才继续执行，并且能够直接拿到异步方法的结果。
+
+不过，这个API目前还在测试阶段，Chrome 的话需要在 <chrome://flags/> 里面打开相关配置才可以体验，具体可参考v8[这篇博客](https://v8.dev/blog/jspi)。

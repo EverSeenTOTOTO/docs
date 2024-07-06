@@ -13,7 +13,7 @@ const closePreview = () => {
   open.value = false;
 };
 
-const trigger = ref(null);
+const trigger = ref<HTMLImageElement | null>(null);
 const pointer = usePointer();
 const show = () => {
   transformOrigin.value = `${pointer.x.value}px ${pointer.y.value}px`
@@ -52,4 +52,3 @@ const show = () => {
   }
 }
 </style>
-

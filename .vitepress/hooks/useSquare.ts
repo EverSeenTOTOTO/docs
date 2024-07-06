@@ -30,8 +30,16 @@ type WasmExports = {
 } & Square;
 
 export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
+  const disabled = ref(false);
   const instance = ref<null | WebAssembly.Instance>(null);
-  const square = computed(() => instance.value?.exports as WasmExports);
+  const square = computed(() => {
+    const exported = { ...instance.value?.exports } as WasmExports;
+
+    exported.run = WebAssembly.promising(exported.run);
+    exported.step = WebAssembly.promising(exported.step);
+
+    return exported;
+  });
   const vmAddr = ref(-1);
   const instsAddr = ref(-1);
 
@@ -70,6 +78,15 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
         stdout.value?.(message);
       },
     },
+    js: {
+      sleep: new WebAssembly.Suspending((ms: number) => new Promise<void>(resolve => {
+        disabled.value = true;
+        setTimeout(() => {
+          disabled.value = false;
+          resolve();
+        }, ms)
+      }))
+    }
   }).then((inst: WebAssembly.Instance) => {
     instance.value = inst;
     vmAddr.value = (instance.value.exports as WasmExports).init();
@@ -118,6 +135,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
       square.value?.reset(vmAddr.value);
       pc.value = square.value?.dump_pc(vmAddr.value) || 0;
       callframes.value = dump_callframes();
+      terminal.value.clear();
 
       const { addr, len } = writeUtf8String(editor.value!.toString());
 
@@ -128,12 +146,14 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     },
 
     step() {
+      if (disabled.value) return;
       square.value?.step(vmAddr.value, instsAddr.value);
       pc.value = square.value?.dump_pc(vmAddr.value) || 0;
       callframes.value = dump_callframes();
     },
 
     run() {
+      if (disabled.value) return;
       this.compile();
       square.value?.run(vmAddr.value, instsAddr.value);
       pc.value = square.value?.dump_pc(vmAddr.value) || 0;
@@ -141,11 +161,13 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     },
 
     reset() {
+      disabled.value = false;
       square.value?.reset(vmAddr.value);
       pc.value = 0;
       instsAddr.value = -1;
       instructions.value = [];
       callframes.value = [];
+      terminal.value.clear();
     }
   };
 }
@@ -155,5 +177,6 @@ export const INITIAL_CODE = `[let fib /[n]
     1
     [+ [fib [- n 1]] [fib [- n 2]]]]]
 
+[sleep 1000]
 [println [fib 20]]
 `
