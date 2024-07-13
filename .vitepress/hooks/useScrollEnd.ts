@@ -1,5 +1,5 @@
-export const onScrollEnd = (el: HTMLElement | undefined, callback: () => void) => {
-  if (!el) return
+export const onScrollEnd = (el: HTMLElement | undefined, callback?: () => void) => {
+  if (!el || !callback) return
 
   let timer: NodeJS.Timeout | null = null
 

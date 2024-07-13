@@ -62,7 +62,13 @@ console.log(bar.sth); // 42
 
 ```js
 Derived.prototype.__proto__ === Base.prototype;
-bar.__proto__ = Base.prototype;
+bar.__proto__ === Base.prototype;
+```
+
+对比下可以发现`Derived.prototype`和`bar`在地位上是相同的。因此，也可以这样实现继承：
+
+```js
+Derived.prototype = new Base();
 ```
 :::
 
@@ -276,4 +282,10 @@ Account.prototype.foo = function() print(42) end
 s2:foo() -- 42
 ```
 
-这种实现有个微妙的问题：实例方法中的`self`始终指向的是`Account.prototype`，没办法拿到类`Account`自己，这时，依然可以模仿JS，在`Account.prototype`上加一个属性`constructor`，让其指向类对象自身。
+<img src="./prototype.svg" />
+
+上述实现有个微妙的问题：实例方法中的`self`始终指向的是`Account.prototype`，没办法拿到类`Account`自己，这时，依然可以模仿JS，在`Account.prototype`上加一个属性`constructor`，让其指向类对象自身。
+
+::: tip
+[这里](https://github.com/EverSeenTOTOTO/eventloop-in-lua/blob/main/src/class.lua)有基于本文沉淀的一套原型链实现，支持`new`、`extend`、`isInstance`、`isDerived`等方法。
+:::

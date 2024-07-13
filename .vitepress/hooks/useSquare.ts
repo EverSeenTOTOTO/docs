@@ -29,6 +29,9 @@ type WasmExports = {
   dealloc(ptr: number, size: number): void,
 } & Square;
 
+WebAssembly.Suspending = WebAssembly.Suspending || class { constructor(fn: unknown) { return fn } }
+WebAssembly.promising = WebAssembly.promising || function(fn: unknown) { return fn }
+
 export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const disabled = ref(false);
   const instance = ref<null | WebAssembly.Instance>(null);
@@ -121,21 +124,20 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     return callframes.join('').split('\n').filter(Boolean);
   }
 
+  const oldPc = ref(0);
   const pc = ref(0);
   const instructions = ref<string[]>([]);
   const callframes = ref<string[]>([]);
 
   return {
     instance,
+    oldPc,
     pc,
     instructions,
     callframes,
 
     compile() {
-      square.value?.reset(vmAddr.value);
-      pc.value = square.value?.dump_pc(vmAddr.value) || 0;
-      callframes.value = dump_callframes();
-      terminal.value.clear();
+      this.reset();
 
       const { addr, len } = writeUtf8String(editor.value!.toString());
 
@@ -148,6 +150,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     step() {
       if (disabled.value) return;
       square.value?.step(vmAddr.value, instsAddr.value);
+      oldPc.value = pc.value;
       pc.value = square.value?.dump_pc(vmAddr.value) || 0;
       callframes.value = dump_callframes();
     },
@@ -156,6 +159,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
       if (disabled.value) return;
       this.compile();
       square.value?.run(vmAddr.value, instsAddr.value);
+      oldPc.value = pc.value;
       pc.value = square.value?.dump_pc(vmAddr.value) || 0;
       callframes.value = dump_callframes();
     },
@@ -163,10 +167,11 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     reset() {
       disabled.value = false;
       square.value?.reset(vmAddr.value);
+      oldPc.value = 0;
       pc.value = 0;
       instsAddr.value = -1;
       instructions.value = [];
-      callframes.value = [];
+      callframes.value = dump_callframes();
       terminal.value.clear();
     }
   };

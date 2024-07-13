@@ -804,6 +804,6 @@ RUSTFLAGS="-C link-arg=-zstack-size=65536" cargo build --target=wasm32-unknown-u
 
 ### `sleep`的实现
 
-Square 当然没有内置一个异步运行时，`sleep`的背后其实是宿主环境的`setTimeout`。至于它在WASM程序内部为什么表现的像是同步阻塞了一样，这是因为背后用到了[JSPI](https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md)。简单来说，JSPI提供了一对API：`WebAssembly.Suspending`和`WebAssembly.promising`，当我们想要在WASM程序内部调用Web环境定义的异步方法`foo`时，可以将导入的`foo`用`WebAssembly.Suspending`包裹，然后将WASM程序导出的、调用`foo`的那个方法用`WebAssembly.promising`包裹。当WASM程序执行到`foo`时会被挂起，直到异步方法`foo`完成才继续执行，并且能够直接拿到异步方法的结果。
+`sleep`本质是Web环境的`setTimeout`。但 Square 既没有内置一个异步运行时，也没有和 Web 环境的`Promise`对应的Rust Binding，那它是为什么在 WASM 程序内部表现得像是同步阻塞了一样呢？这是因为背后用到了[JSPI](https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md)。简单来说，JSPI提供了一对API：`WebAssembly.Suspending`和`WebAssembly.promising`，当我们想要在WASM程序内部调用Web环境定义的异步方法`foo`时，可以将导入的`foo`用`WebAssembly.Suspending`包裹，然后将WASM程序导出的、调用`foo`的那个方法用`WebAssembly.promising`包裹。当WASM程序执行到`foo`时会被挂起，直到异步方法`foo`完成才继续执行，并且能够直接拿到异步方法的结果。
 
 不过，这个API目前还在测试阶段，Chrome 的话需要在 <chrome://flags/> 里面打开相关配置才可以体验，具体可参考v8[这篇博客](https://v8.dev/blog/jspi)。

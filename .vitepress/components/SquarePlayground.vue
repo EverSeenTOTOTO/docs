@@ -110,17 +110,35 @@ const alignLastCallframe = () => {
   });
 }
 
+const isInScrollableView = (element: HTMLElement, container: HTMLElement) => {
+  const elemRect = element.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  return (
+    elemRect.top >= containerRect.top &&
+    elemRect.left >= containerRect.left &&
+    elemRect.bottom <= containerRect.bottom &&
+    elemRect.right <= containerRect.right
+  );
+}
+
 onUpdated(() => {
   nextTick(() => {
     const instructionLIs = Array.from(instructionUL.value!.children);
-    const nextInstruction = instructionLIs.find((_, index) => index === square.pc.value)
+    // 额外展示一条指令，看起来更舒服
+    const nextIndex = square.pc.value > square.oldPc.value ? square.pc.value + 1 : square.pc.value - 1;
+    const nextInstruction = (instructionLIs.find((_, index) => index === nextIndex)
+      || instructionLIs.find((_, index) => index === square.pc.value)) as HTMLLIElement;
 
-    onScrollEnd(instructionUL.value!, alignLastCallframe);
-    nextInstruction?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest'
-    });
-  });
+    if (!isInScrollableView(nextInstruction!, instructionUL.value!)) {
+      onScrollEnd(instructionUL.value!, alignLastCallframe);
+      nextInstruction?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
+    } else {
+      alignLastCallframe();
+    }
+  })
 })
 
 const step = () => {
@@ -146,8 +164,8 @@ const step = () => {
     <div class="playground">
       <ul class="instructions" ref="instructionUL">
         <li v-for="(inst, index) in square.instructions.value" :key="index" class="instruction" :class="{
-    'instruction--active': index === square.pc.value
-  }">{{ `${index}: ${inst}` }}</li>
+          'instruction--active': index === square.pc.value
+        }">{{ `${index}: ${inst}` }}</li>
       </ul>
       <ul class="callframes" ref="callframUL">
         <li v-for="(callframe, index) in square.callframes.value" :key="index">
