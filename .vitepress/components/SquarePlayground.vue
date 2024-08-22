@@ -110,7 +110,8 @@ const alignLastCallframe = () => {
   });
 }
 
-const isInScrollableView = (element: HTMLElement, container: HTMLElement) => {
+const isInScrollableView = (element: HTMLElement | undefined, container: HTMLElement) => {
+  if (!element) return false;
   const elemRect = element.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
   return (
@@ -129,7 +130,7 @@ onUpdated(() => {
     const nextInstruction = (instructionLIs.find((_, index) => index === nextIndex)
       || instructionLIs.find((_, index) => index === square.pc.value)) as HTMLLIElement;
 
-    if (!isInScrollableView(nextInstruction!, instructionUL.value!)) {
+    if (!isInScrollableView(nextInstruction, instructionUL.value!)) {
       onScrollEnd(instructionUL.value!, alignLastCallframe);
       nextInstruction?.scrollIntoView({
         behavior: 'smooth',

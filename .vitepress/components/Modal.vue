@@ -64,12 +64,22 @@ const onWrapClick = () => {
 
 .fade-enter-active {
   animation-fill-mode: both;
-  animation: fadeIn 0.3s cubic-bezier(0.55, 0, 0.55, 0.2);
+  animation: fadeIn 0.3s cubic-bezier(0.08, 0.82, 0.17, 1);
 }
 
 .fade-leave-active {
   animation-fill-mode: both;
   animation: fadeOut 0.3s cubic-bezier(0.55, 0, 0.55, 0.2);
+}
+
+.zoom-enter-active {
+  animation-fill-mode: both;
+  animation: zoomIn 0.3s cubic-bezier(0.08, 0.82, 0.17, 1);
+}
+
+.zoom-leave-active {
+  animation-fill-mode: both;
+  animation: zoomOut 0.3s cubic-bezier(0.6, 0.04, 0.98, 0.34);
 }
 
 @keyframes fadeIn {
@@ -92,15 +102,6 @@ const onWrapClick = () => {
   }
 }
 
-.zoom-enter-active {
-  animation: zoomIn 0.3s cubic-bezier(0.08, 0.82, 0.17, 1);
-  animation-fill-mode: both;
-}
-
-.zoom-leave-active {
-  animation: zoomOut 0.3s cubic-bezier(0.6, 0.04, 0.98, 0.34);
-  animation-fill-mode: both;
-}
 
 @keyframes zoomIn {
   0% {

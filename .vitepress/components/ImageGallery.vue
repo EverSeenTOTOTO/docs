@@ -1,22 +1,41 @@
 <script setup lang="ts">
-import { ref, withDefaults, defineProps } from 'vue';
+import { defineProps, ref, withDefaults } from 'vue';
 import ImageView from './ImageView.vue';
 
-const target = ref(null);
+const target = ref<HTMLUListElement>();
+const isDragging = ref(false);
+const startX = ref(0);
 
-const onWheel = (e) => {
+const onPointerDown = (e: PointerEvent) => {
+  e.preventDefault();
+  startX.value = e.clientX;
+}
+
+const onPointerMove = (e: PointerEvent) => {
+  e.preventDefault();
+  if (startX.value === 0) return;
+  isDragging.value = true;
+
+  target.value!.scrollLeft += startX.value - e.clientX;
+  startX.value = e.clientX;
+}
+
+const onPointerUp = (e: PointerEvent) => {
+  e.preventDefault();
+  isDragging.value = false;
+  startX.value = 0;
+}
+
+const onWheel = (e: WheelEvent) => {
   if (target.value) {
-    target.value.scrollBy({
-      left: e.deltaY,
-      behavior: 'smooth',
-    });
+    target.value.scrollLeft += e.deltaX / 4;
   }
 }
 
 const itemSize = ref('320px');
 
 export type ImageGalleryProps = {
-  items: { src: string }[]
+  items: { src: string, desc: string }[]
 }
 
 const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
@@ -25,12 +44,13 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
 
 </script>
 <template>
-  <div ref="container" class="vp-doc" @wheel="onWheel">
+  <div class="vp-doc" @wheel="onWheel" @pointerdown="onPointerDown" @pointerup="onPointerUp"
+    @pointermove="onPointerMove">
     <slot name="title"></slot>
     <ul ref="target" class="cards" :style="{ '--item-size': itemSize }">
       <li v-for="{ desc, src } in items">
         <div class="item">
-          <ImageView class="item__img" :src="src" />
+          <ImageView class="item__img" :src="src" :style="{ 'pointer-events': isDragging ? 'none' : undefined }" />
           <div class="item__desc">{{ desc }}</div>
         </div>
       </li>
@@ -65,7 +85,6 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
     animation: linear adjust-z-index both;
     animation-timeline: --li-in-and-out-of-view;
 
-    /* Make the 3D stuff work… */
     perspective: 40em;
 
     position: relative;
@@ -89,6 +108,7 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+  position: relative;
 
   width: 100%;
   height: 100%;
@@ -100,7 +120,6 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
   transform: translateX(-100%) rotateY(-45deg);
 
   will-change: transform;
-
 }
 
 ::v-deep(.item__img) {
@@ -154,4 +173,3 @@ const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
   }
 }
 </style>
-

@@ -1,12 +1,29 @@
-import { ref, Ref, computed, } from 'vue';
 import { Terminal } from '@xterm/xterm';
-import { CodeJar } from 'codejar';
+import type { CodeJar } from 'codejar';
+import { ref, Ref } from 'vue';
 // @ts-ignore
 import init from '../square.wasm?init';
 
 const utf8Decoder = new TextDecoder('utf-8');
+const readUtf8String = (buffer: ArrayBuffer, offset: number, length: number) => {
+  const array = new Uint8Array(buffer, offset, length);
+  return utf8Decoder.decode(array);
+};
+const writeUtf8String = (buffer: ArrayBuffer, source: string, alloc: (len: number) => number) => {
+  const encoder = new TextEncoder();
+  const encodedString = encoder.encode(source);
+  const sourceAddr = alloc(encodedString.length);
 
-type Square = {
+  new Uint8Array(buffer, sourceAddr, encodedString.length).set(encodedString);
+
+  return {
+    addr: sourceAddr,
+    len: encodedString.length,
+  };
+};
+
+
+export type Square = {
   compile(sourceAddr: number, size: number): number, // instsAddr
   dump_instructions(instsAddr: number): void,
 
@@ -20,7 +37,7 @@ type Square = {
   run(vmAddr: number, instsAddr: number): void;
 };
 
-type WasmExports = {
+type SquareWasmExports = {
   __data_end: WebAssembly.Global,
   __heap_base: WebAssembly.Global,
   memory: WebAssembly.Memory,
@@ -29,59 +46,33 @@ type WasmExports = {
   dealloc(ptr: number, size: number): void,
 } & Square;
 
+//@ts-ignore
 WebAssembly.Suspending = WebAssembly.Suspending || class { constructor(fn: unknown) { return fn } }
-WebAssembly.promising = WebAssembly.promising || function(fn: unknown) { return fn }
+//@ts-ignore
+WebAssembly.promising = WebAssembly.promising || function (fn: unknown) { return fn }
 
 export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const disabled = ref(false);
-  const instance = ref<null | WebAssembly.Instance>(null);
-  const square = computed(() => {
-    const exported = { ...instance.value?.exports } as WasmExports;
-
-    exported.run = WebAssembly.promising(exported.run);
-    exported.step = WebAssembly.promising(exported.step);
-
-    return exported;
-  });
+  const square = ref<SquareWasmExports>();
   const vmAddr = ref(-1);
   const instsAddr = ref(-1);
 
+  type Write = (message: string) => void;
 
-  const readUtf8String = (offset: number, length: number) => {
-    const array = new Uint8Array(square.value!.memory.buffer, offset, length);
-    return utf8Decoder.decode(array);
-  };
-
-  const writeUtf8String = (source: string) => {
-    const encoder = new TextEncoder();
-    const encodedString = encoder.encode(source);
-    const sourceAddr = square.value!.alloc(encodedString.length);
-
-    new Uint8Array(square.value!.memory.buffer, sourceAddr, encodedString.length).set(encodedString);
-
-    return {
-      addr: sourceAddr,
-      len: encodedString.length,
-    };
-  };
-
-  const termWrite = (message: string) => {
-    terminal.value?.write(message)
-  };
-  const stdout = ref<(message: string) => void>(termWrite);
-  const redirect = (write: (message: string) => void) => {
-    stdout.value = write;
-  }
+  const termWrite: Write = (message) => terminal.value?.write(message);
+  const stdout = ref<Write>(termWrite);
+  const redirect = (write: Write) => { stdout.value = write; };
 
   init({
     memory: {
       write: (offset: number, length: number) => {
-        const message = readUtf8String(offset, length);
+        const message = readUtf8String(square.value!.memory.buffer, offset, length);
 
         stdout.value?.(message);
       },
     },
     js: {
+      //@ts-ignore
       sleep: new WebAssembly.Suspending((ms: number) => new Promise<void>(resolve => {
         disabled.value = true;
         setTimeout(() => {
@@ -90,9 +81,16 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
         }, ms)
       }))
     }
-  }).then((inst: WebAssembly.Instance) => {
-    instance.value = inst;
-    vmAddr.value = (instance.value.exports as WasmExports).init();
+  }).then((instance: WebAssembly.Instance) => {
+    square.value = {
+      ...instance.exports,
+      //@ts-ignore
+      run: WebAssembly.promising(instance.exports.run),
+      //@ts-ignore
+      step: WebAssembly.promising(instance.exports.step),
+    } as SquareWasmExports;
+
+    vmAddr.value = square.value.init();
     callframes.value = dump_callframes();
     console.log(`VM address: ${vmAddr.value}`);
   })
@@ -130,7 +128,6 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const callframes = ref<string[]>([]);
 
   return {
-    instance,
     oldPc,
     pc,
     instructions,
@@ -139,7 +136,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     compile() {
       this.reset();
 
-      const { addr, len } = writeUtf8String(editor.value!.toString());
+      const { addr, len } = writeUtf8String(square.value!.memory.buffer, editor.value!.toString(), square.value!.alloc);
 
       instsAddr.value = square.value?.compile(addr, len) || -1;
       instructions.value = dump_instructions();
@@ -149,6 +146,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
 
     step() {
       if (disabled.value) return;
+
       square.value?.step(vmAddr.value, instsAddr.value);
       oldPc.value = pc.value;
       pc.value = square.value?.dump_pc(vmAddr.value) || 0;
@@ -157,6 +155,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
 
     run() {
       if (disabled.value) return;
+
       this.compile();
       square.value?.run(vmAddr.value, instsAddr.value);
       oldPc.value = pc.value;
