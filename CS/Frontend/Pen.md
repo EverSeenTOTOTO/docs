@@ -1,4 +1,116 @@
+<script setup>
+import PenDemo from '@vp/page-only/PenDemo.vue';
+</script>
+
 # 博客小工具开发实践
+
+## 2024-09-17
+
+博客迁移至 Vitepress 之后很久没怎么动过，最近看了一些精美的博客总觉得自家的缺乏交互性。刚好，最近一年写 React 比较多，有些笔记是有关 React 的，因此也有了支持 React 的诉求，所以抽出空来给博客加上 React 支持，以便混用 Vue 组件和 React 组件实现更多有趣的 Demo。
+
+方案上并没有设计得太复杂。既然 React 和 Vue 都具备将实例挂载到指定节点的能力，我们在要嵌入 React 组件的 Vue 代码处，或者要嵌入 Vue 组件的 React 代码处调用`ReactDom.createRoot().render()`或`Vue.createApp().mount()`每次重新创建一个实例就行。
+
+下面分别是在 Vue 代码中嵌入 React 组件的 Wrapper 和在 React 代码嵌入 Vue 组件的 Wrapper。`ReactWrapContext`的意义在于，当我们在 Vue 应用中嵌入 React 应用，而 React 应用内又再次创建了一个 Vue 应用实例时，由于内外层 Vue 实例是独立的，内层实例无法拿到外层应用注入的数据，表现在 Vitepress 中就是我们内层 Vue 实例调用`Vitepress.useData`的时候会遇到错误，因此需要借助中间 React 层的 Context 将数据透传。当然，如果是 React -> Vue -> React 这样的路径，内层 React 实例也会遇到无法拿到外层 React 应用 Context 数据的情况，只不过这个项目当前还没有这种场景，暂时未做处理：
+
+:::code-group
+
+```vue [ReactWrap]
+<script setup lang="tsx">
+import React from 'react';
+import ReactDom from 'react-dom/client';
+import { VitePressData } from 'vitepress';
+import { dataSymbol } from 'vitepress/dist/client/app/data.js';
+import { inject, onMounted, ref } from 'vue';
+import { ReactWrapContext } from './context';
+
+const vpData = inject<VitePressData>(dataSymbol);
+const { App } = defineProps(["App"]);
+const container = ref<HTMLElement | null>(null);
+
+onMounted(() => {
+  const root = ReactDom.createRoot(
+    container.value!,
+  );
+
+  if (typeof App !== 'function') {
+    throw new Error('render function is required');
+  }
+
+  root.render(
+    <ReactWrapContext.Provider value={{ vpData: vpData }}>
+      <App />
+    </ReactWrapContext.Provider>
+  );
+});
+
+</script>
+<template>
+  <div ref="container" />
+</template>
+```
+
+```tsx [VueWrap]
+import React, { useContext, useEffect, useRef } from 'react'
+import { dataSymbol } from 'vitepress/dist/client/app/data.js'
+import { createApp } from 'vue'
+import { ReactWrapContext } from './context'
+
+export default ({ App, ...rest }) => {
+  const { vpData } = useContext(ReactWrapContext);
+  const container = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const app = createApp(App);
+
+    app.provide(dataSymbol, vpData)
+    app.mount(container.current!)
+
+    return () => {
+      app.unmount();
+    }
+  }, [vpData, App])
+
+  return <div ref={container} {...rest} />
+}
+```
+:::
+
+
+这是`ReactWrap`和`VueWrap`的用例，`VpButton`是一个普通的 Vue 组件：<PenDemo />
+
+```vue
+<script setup lang="tsx">
+import React from 'react';
+import { h } from 'vue';
+import VpButton from '../Button.vue';
+import ReactWrap from '../ReactWrap.vue';
+import VueWrap from '../VueWrap';
+
+const App: React.FC = () => {
+  const [count, setCount] = React.useState(0);
+
+  return <VueWrap
+    App={{
+      setup() {
+        return () => h(
+          VpButton,
+          { onClick: () => setCount(count + 1) },
+          () => `点我：${count}`
+        )
+      }
+    }}
+    style={{
+      display: 'inline-block',
+    }}
+  />
+}
+
+</script>
+<template>
+  <ReactWrap :App="App" :style="{ 'display': 'inline-block', 'border': '1px solid #d5d5d5' }" />
+</template>
+
+```
 
 ## 2023-10-28
 

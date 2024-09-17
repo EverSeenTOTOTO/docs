@@ -2,6 +2,7 @@
   "dependencies": {
     "@vueuse/core": "^10.11.0",
     "@xterm/xterm": "^5.5.0",
+    "clsx": "^2.1.1",
     "codejar": "^4.2.0",
     "lxgw-wenkai-lite-webfont": "^1.7.0",
     "markdown-it-footnote": "^3.0.3",
