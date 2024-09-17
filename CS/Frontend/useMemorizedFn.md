@@ -1,4 +1,8 @@
-# useMemoizedFn
+<script setup>
+import UseMemorizedFn from '@vp/page-only/UseMemorizedFn.vue';
+</script>
+
+# useMemorizedFn
 
 将事件回调包裹在`useCallback`中通常会带来一个两难抉择：如果将`useCallback`的依赖数组置空以确保回调函数对象一直不变，可以避免不必要的重绘，但函数中访问的状态由于闭包捕获将不再更新；如果对React“诚实”，将函数所依赖的状态完整声明在`useCallback`数组中，则每次状态变更时我们都会得到一个新的回调方法，间接导致所有依赖此方法的组件重新渲染或者副作用重新执行。
 
@@ -86,3 +90,7 @@ export default () => {
   </div>
 };
 ```
+
+打开控制台观察发生重绘的组件：
+
+<UseMemorizedFn />

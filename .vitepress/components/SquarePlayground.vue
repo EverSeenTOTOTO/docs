@@ -6,6 +6,7 @@ import * as xterm from '@xterm/xterm';
 import { useScrollLock } from '@vueuse/core';
 import '@xterm/xterm/css/xterm.css';
 import { onScrollEnd } from '../hooks/useScrollEnd';
+import VpButton from './Button.vue';
 
 import { useData } from 'vitepress'
 
@@ -18,9 +19,6 @@ const colors = computed(() => isDark.value
     keyword: '#F97583',
     reserved: '#B392F0',
     comment: '#6A737D',
-
-
-    btnBg: '#2a8148',
   }
   : {
     string: '#032F62',
@@ -28,7 +26,6 @@ const colors = computed(() => isDark.value
     keyword: '#D73A49',
     reserved: '#6F42C1',
     comment: '#6A737D',
-    btnBg: '#c6f1d5',
   });
 
 const { Terminal } = xterm as any;
@@ -149,17 +146,17 @@ const step = () => {
 
 </script>
 <template>
-  <div class="container" :style="{ '--btnBg': colors.btnBg }">
+  <div class="container">
     <div class="editor" ref="editorElement" />
 
     <div class="operation">
       <span>Console: </span>
-      <button @click="toggleLock" :style="{ marginInlineStart: 'auto' }">
+      <vp-button @click="toggleLock" :style="{ marginInlineStart: 'auto' }">
         {{ docScrollLocked ? 'ScrollUnlock' : 'ScrollLock' }}
-      </button>
-      <button @click="square.compile">Compile</button>
-      <button @click="step">Step</button>
-      <button @click="square.run">Run</button>
+      </vp-button>
+      <vp-button @click="() => square.compile()">Compile</vp-button>
+      <vp-button @click="step">Step</vp-button>
+      <vp-button @click="() => square.run()">Run</vp-button>
     </div>
 
     <div class="playground">
@@ -257,20 +254,6 @@ const step = () => {
 
     &>span {
       flex: 0 0 25%;
-    }
-
-    >button {
-      padding-inline: 6px;
-      border-radius: 3px;
-      font-weight: bold;
-
-      &:active {
-        opacity: 0.6;
-      }
-
-      &:hover {
-        background-color: var(--btnBg);
-      }
     }
   }
 

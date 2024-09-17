@@ -4,6 +4,7 @@ import { defineConfig } from 'vitepress'
 import mdFootnote from 'markdown-it-footnote'
 import mdLinkOpen from './mdit-plugins/link-open';
 import { fileURLToPath, URL } from 'node:url'
+import react from '@vitejs/plugin-react'
 
 const isDir = (filepath: string) => fs.statSync(filepath).isDirectory();
 const isMd = (filepath: string) => /\.(md|markdown)$/i.test(filepath);
@@ -148,7 +149,10 @@ export default defineConfig({
           replacement: resolvePath('./components/VPSidebarItem.vue')
         }
       ]
-    }
+    },
+
+    plugins: [react()]
+
   }
 
 })

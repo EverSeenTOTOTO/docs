@@ -1,33 +1,21 @@
-<script setup>
-import LifeGame from '@vp/page-only/LifeGame.vue'
-</script>
-
-# Conway's Game of Life
-
-生命游戏。试用下 Vitepress 在 Markdown 中引入 Vue 文件的功能。
-
-<LifeGame />
-
-::: code-group
-```vue [script]
 <script setup lang="ts">
-import { ref, reactive, computed, onUnmounted } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { useData } from 'vitepress'
-import { useMediaQuery } from '@vueuse/core'
+import { useMediaQuery } from '@vueuse/core';
+import { useStep } from '../../hooks/useStep';
+import VpButton from '../Button.vue';
 
-const isSmallScreen = useMediaQuery('(max-width: 1024px)');
+const isSmallScreen = useMediaQuery('(max-width: 375px)');
 const { isDark } = useData()
 
 const colors = computed(() => isDark.value
   ? {
     bg: 'rgba(255,255,255,0.45)',
     fg: 'rgba(0,0,0,0.45)',
-    btnBg: '#2a8148',
   }
   : {
     bg: 'rgba(0,0,0,0.45)',
     fg: 'rgba(255,255,255,0.45)',
-    btnBg: '#c6f1d5',
   });
 
 const SIZE = isSmallScreen.value ? 24 : 64; // grid cells
@@ -35,9 +23,10 @@ const bits = reactive(Array.from({ length: SIZE * SIZE }, () => false));
 const generation = ref(0);
 const alive = computed(() => bits.filter(Boolean).length);
 
-let interval: NodeJS.Timeout | null = null;
 
 const toggleBit = (index: number) => bits.splice(index, 1, !bits[index]);
+
+
 const tick = () => {
   if (alive.value === 0) return;
 
@@ -72,11 +61,9 @@ const tick = () => {
   bits.splice(0, bits.length, ...newBitMap);
   generation.value++;
 }
-const pause = () => clearInterval(interval);
-const auto = () => {
-  pause();
-  interval = setInterval(tick, 300)
-}
+
+const { pause, play } = useStep(tick);
+
 const reset = () => {
   pause();
   generation.value = 0;
@@ -84,8 +71,6 @@ const reset = () => {
     bits[i] = false;
   }
 }
-
-onUnmounted(pause)
 
 const pressed = ref(false);
 const updated = new Map<number, boolean>();
@@ -104,34 +89,28 @@ const handlePointerUp = () => {
   updated.clear();
 }
 </script>
-```
 
-```vue [template]
 <template>
-  <div class="game" :style="{ '--size': SIZE, '--btnBg': colors.btnBg, '--bg': colors.bg, '--fg': colors.fg }">
+  <div class="game" :style="{ '--size': SIZE, '--bg': colors.bg, '--fg': colors.fg }">
     <div class="operation">
       <span>Generation: {{ generation }}</span>
       <span>Alive: {{ alive }}</span>
-      <button :style="{ marginInlineStart: 'auto' }" @click="tick">Tick</button>
-      <button @click="auto">Auto</button>
-      <button @click="pause">Pause</button>
-      <button @click="reset">Reset</button>
+      <vp-button :style="{ marginInlineStart: 'auto' }" @click="tick">Tick</vp-button>
+      <vp-button @click="play">Auto</vp-button>
+      <vp-button @click="pause">Pause</vp-button>
+      <vp-button @click="reset">Reset</vp-button>
     </div>
     <div class="container">
-      <div v-for="(bit, index) in bits" class="item" :class="{ 'item--set': bit }" @pointerdown="handlePointerDown(index)"
-        @pointerup="handlePointerUp" @pointermove="handlePointerMove(index)" />
+      <div v-for="(bit, index) in bits" class="item" :class="{ 'item--set': bit }"
+        @pointerdown="handlePointerDown(index)" @pointerup="handlePointerUp" @pointermove="handlePointerMove(index)" />
     </div>
   </div>
 </template>
-```
-
-```vue [style]
 <style scoped>
 .game {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-
 }
 
 .container {
@@ -170,19 +149,6 @@ const handlePointerUp = () => {
   &>span {
     flex: 0 0 25%;
   }
-
-  >button {
-    padding-inline: 6px;
-    border-radius: 3px;
-
-    &:active {
-      opacity: 0.6;
-    }
-
-    &:hover {
-      background-color: var(--btnBg);
-    }
-  }
 }
 
 @media (max-width: 1024px) {
@@ -202,5 +168,3 @@ const handlePointerUp = () => {
   }
 }
 </style>
-```
-:::
