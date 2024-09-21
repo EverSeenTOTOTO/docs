@@ -125,6 +125,17 @@ export default defineConfig({
     }
   },
 
+  transformHead(context) {
+    context.head.push([
+      'script',
+      {
+        defer: 'defer',
+        src: "https://track.everseenflash.com/script.js",
+        ['data-website-id']: '5f6141ab-be5c-49b0-b543-d62a6f417ec5'
+      }
+    ])
+  },
+
   markdown: {
     math: true,
     config(md) {
