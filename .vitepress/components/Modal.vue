@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ref, defineProps, defineEmits } from 'vue'
+import { ref } from 'vue'
 
 const { open, transformOrigin } = defineProps(['open', 'transformOrigin'])
-const emit = defineEmits(['maskClick', 'wrapClick'])
+const emit = defineEmits(['click', 'afterOpenChange'])
 
 const modal = ref(null)
 
-const onMaskClick = () => {
-  emit('maskClick')
+const onClick = () => {
+  emit('click')
 }
-const onWrapClick = () => {
-  emit('wrapClick')
+const onOpenChange = (open: boolean) => {
+  emit("afterOpenChange", open)
 }
 </script>
 <template>
@@ -18,12 +18,10 @@ const onWrapClick = () => {
     <Teleport to="#app">
       <div class="modal" ref="modal">
         <Transition name="fade">
-          <div v-if="open" class="mask" @click="onMaskClick" />
+          <div v-if="open" class="mask" />
         </Transition>
-        <Transition name="zoom">
-          <div v-if="open" class="wrap" @click="onWrapClick" :style="{
-            transformOrigin
-          }">
+        <Transition name="zoom" @after-enter="onOpenChange(true)" @after-leave="onOpenChange(false)">
+          <div v-if="open" class="wrap" @click="onClick" :style="{ transformOrigin }">
             <slot />
           </div>
         </Transition>
@@ -39,10 +37,7 @@ const onWrapClick = () => {
 
   .mask {
     position: fixed;
-    top: 0;
-    right: 0;
-    left: 0;
-    bottom: 0;
+    inset: 0;
     background-color: rgba(55, 55, 55, 0.6);
     height: 100%;
     filter: alpha(opacity=50);
@@ -50,10 +45,7 @@ const onWrapClick = () => {
 
   .wrap {
     position: fixed;
-    top: 0;
-    right: 0;
-    left: 0;
-    bottom: 0;
+    inset: 0;
     z-index: 1001;
 
     display: flex;

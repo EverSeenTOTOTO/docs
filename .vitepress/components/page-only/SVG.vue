@@ -12,6 +12,8 @@ const DraggableIcon: React.FC<{ svgRef: React.MutableRefObject<SVGSVGElement | n
     transform={`translate(${pos[0]},${pos[1]})`}
     onDragStart={e => e.preventDefault()}
     onMouseDown={() => {
+      if (draggingHandler.current) document.removeEventListener('mousemove', draggingHandler.current);
+
       draggingHandler.current = (e: React.MouseEvent<SVGGElement>) => {
         const rect = svgRef.current!.getBoundingClientRect()
         const x = e.clientX - rect.left;
@@ -19,7 +21,7 @@ const DraggableIcon: React.FC<{ svgRef: React.MutableRefObject<SVGSVGElement | n
 
         if (x < 0 || y < 0 || e.clientX > rect.right || e.clientY > rect.bottom) return;
 
-        setPos([x, y]);
+        setPos([Math.round(x), Math.round(y)]);
       }
 
       document.addEventListener('mousemove', draggingHandler.current);

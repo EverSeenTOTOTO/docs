@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, ref, withDefaults } from 'vue';
+import { ref, withDefaults } from 'vue';
 import ImageView from './ImageView.vue';
 
 const target = ref<HTMLUListElement>();

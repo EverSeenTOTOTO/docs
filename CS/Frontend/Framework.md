@@ -336,7 +336,7 @@ export function evalButton(node: VNodeButton) {
 
   btn.append(...evalSeq(node.children));
 
-+  node.output = [btn];
+  node.output = [btn]; // [!code ++]
 
   return btn;
 }
@@ -529,9 +529,9 @@ Diff Patch同时也是实现SSR“水化”的关键，这是废话，不表。
 
 ## 组件
 
-什么是组件，上面点了一下，组件的出现是为了逻辑复用，逻辑复用最基础的方式就是抽象成函数，所以组件本质就是一个生成VDOM的函数。那为什么又有所谓的class组件和functional组件之分呢？这还得从FP和OOP思想的差异说起，我假设读者已经对FP的常见概念，如“纯函数”、“副作用”有所了解，因为感觉我接下来的表达还不够清晰，理解还不够透彻。
+什么是组件，上面点了一下，组件的出现是为了逻辑复用，逻辑复用最基础的方式就是抽象成函数，所以组件本质就是一个生成VDOM的函数。那为什么又有所谓的class组件和functional组件之分呢？这还得从FP和OOP思想的差异说起，我假设读者已经对FP的常见概念，如“纯函数”、“副作用”有所了解。
 
-函数有其内部状态，每次执行时函数体内定义的变量分配在其栈上，每次执行完成都会随着函数栈帧的销毁回收。所以理论上只要参数不变函数的每次执行都应该得到相同的效果，但实际上对非纯函数式的语言，由于闭包捕获、获取时间戳、写入标准输出流等外部状态的变化，即使参数没变，函数在不同的时机执行也可能得到不同的效果。有时这会造成难以察觉的BUG，因此我们应该尽可能编写“纯”的、前后行为一致的函数，这样的函数对其使用者来说，只代表一段固定的逻辑，是个黑盒。那逻辑要操作的数据放在哪里呢？一种方法是用函数表达数据结构，这是可行的。更符合人们直觉的是用`struct`之类的东西表达一个数据结构，因此理想的状态是：用对象表达一组数据，前端常称之为状态`state`，用一组纯函数表达操作这个对象的逻辑，比如`render`，只要提供的参数相同，函数的行为（输出的VDOM）始终相同：
+函数有其内部状态，每次执行时函数体内定义的变量分配在其栈上，每次执行完成都会随着函数栈帧的销毁回收。所以理论上只要参数不变函数的每次执行都应该得到相同的效果，但现实中对非纯函数式的语言，由于闭包捕获、获取时间戳、写入标准输出流等外部状态的变化，即使参数没变，函数在不同的时机执行也可能得到不同的效果。有时这会造成难以察觉的BUG，因此我们应该尽可能编写“纯”的、前后行为一致的函数。这样的函数对其使用者来说，只代表一段固定的逻辑，是个黑盒。那逻辑要操作的数据放在哪里呢？一种方法是用函数表达数据结构，这是可行的。而更符合人们直觉的是用`struct`之类的东西表达一个数据结构，因此理想的状态是：用对象表达一组数据，前端常称之为状态`state`，用一组纯函数表达操作这个对象的逻辑，比如`render`，只要提供的参数相同，函数的行为（输出的VDOM）始终相同：
 
 ```ts
 const state = {
@@ -597,7 +597,6 @@ export function diffPatchComponent(source: VNodeComponent, target: VNodeComponen
   const vdom = target.component(target.state);
   const actions = diffPatch(source.vdom, vdom);
 
-  // source can be === to target, see hooks, so we can't move this statement up
   target.vdom = vdom;
 
   return actions;
@@ -642,7 +641,7 @@ export function diffPatchComponent(source: VNodeComponent, target: VNodeComponen
 
 ## 响应式和状态管理
 
-上面用例中的注释很重要很重要，因为它引出了响应性话题：我们需要手动绑定状态改变后的重绘逻辑，这正是jQuery被淘汰的原因。这个例子中只要在按钮按下后更新状态还好，假如还有`<input>`标签呢？我们不仅要在状态改变时更改输入框里面的值，还要在用户输入后将输入变化同步给应用状态，即所谓的“**双向绑定**”。一个两个元素都需要手动绑定一组状态更新逻辑，应用复杂之后根本顶不住，稍有疏忽就会产生BUG。因此React和Vue最大的贡献是实现了响应性，我们只需要关注状态变更，由框架完成重绘或同步UI状态给应用状态的操作。（准确来说，Vue实现了双向绑定，React中更提倡单向数据流）。
+上面用例中的注释很重要很重要，因为它引出了响应性话题：我们需要手动绑定状态改变后的重绘逻辑，这正是jQuery被淘汰的原因。这个例子中只要在按钮按下后更新状态还好，假如还有`<input>`标签呢？我们不仅要在状态改变时更改输入框里面的值，还要在用户输入后将输入变化同步给应用状态，即所谓的“**双向绑定**”。一个两个元素都需要手动绑定一组状态更新逻辑，应用复杂之后根本顶不住，稍有疏忽就会产生BUG。因此React和Vue最大的贡献是实现了响应性，我们只需要关注状态变更，由框架完成重绘或同步UI状态给应用状态的操作。
 
 ### React
 
@@ -697,11 +696,9 @@ class AnonymousClass extends React.Component {
 }
 ```
 
-> 在真正的React中更新状态的行为是异步的，不能简单地使用`this.state.count + 1`计算新值。
-
 我接触React的时间其实要晚于Vue，那时已经是React Hooks元年了。所以我几乎没怎么书写过class组件。那么在函数式组件中，要怎么达成同样效果呢？答案已经呼之欲出了，状态在外面放哪儿根本无所谓，重点是提供一个包装过的方法，这个方法看起来只是修改状态的，其实里面还封装了触发重绘的逻辑，这不就是`useState`吗！
 
-于是我们可以做一件有趣的事情，绕过React官方的`useState`，自己造个一次性青春版，这是在真实的React项目中编写的例子：
+于是我们可以做一件有趣的事情，抛开React官方的`useState`，自己造个一次性青春版，这是在真实的React项目中编写的例子：
 
 ```ts
 import { createRoot } from 'react-dom/client';
@@ -778,7 +775,6 @@ export function useState<T>(init: T): [T, (value: T) => void] {
       memo = state;
       changedStates.push(memo); // collect changed states // [!code ++]
       root.render(<App />);     // trigger rerender 
-      setTimeout(() => changedStates.splice(0, changedStates.length)); // clear after each turn, not safe // [!code ++]
     }
   };
 
@@ -796,6 +792,7 @@ export function useEffect<T>(effect: () => void | (() => void), deps: Array<T>):
     if (typeof initOrClear === 'function') initOrClear();
 
     initOrClear = effect() ?? true;
+    changedStates.splice(0, changedStates.length);
   }
 }
 
@@ -815,7 +812,7 @@ const App = () => {
 
 ```
 
-在真实的React中，`useEffect`会先记下要执行的副作用，在组件渲染后异步执行，这里的渲染是指对DOM的Patch已完成，但浏览器重绘还未进行，可以通过下面这个例子验证，`useEffect`回调被触发时，我们先打印出最新的DOM状态，然后阻塞主线程1s，这时点击按钮可以看到打印出的是最新值，1s后才绘制染出最新值：
+在真实的React中，`useEffect`会先记下要执行的副作用，在组件渲染后执行，这里的“渲染后”是指对DOM的Patch已完成，但浏览器重绘还未进行，可以通过下面这个例子验证，`useEffect`回调被触发时，我们先打印出最新的DOM状态，然后阻塞主线程1s，这时点击按钮可以看到打印出的是最新值，1s后屏幕才绘制染出该值：
 
 ```ts
 const App = () => {
@@ -836,9 +833,12 @@ const App = () => {
 
 `useState`和`useEffect`是其他Hooks的基石，还有些React18新出现的Hooks我还不是很熟悉就不介绍了。现在我们要做的，就是汇总以上知识，在自己的微型React框架中实现真正可复用的Hooks，而不是上面的一次性“青春版”。
 
-实现的难点其实是怎么封装“青春版”Hooks用到的那些全局变量，比如`memo`和`initOrClear`，因为我们不知道用户会调用多少次Hook，不可能预先准备足够的全局变量。那用数据结构吧，因为有一个查找旧状态进行比对的过程，首先想到哈希表，但是用什么作为键呢？我最初的想法是直接`WeakMap`用状态作为键，值代表状态是否`dirty`，很快意识到思路不对，例如`useState([])`，别忘了组件函数每次都会重新执行，所以每次都会创建一个新的`[]`，和上次的`[]`不是一个东西。而且我一开始并没有想到将状态存在组件VNode上，反而想偷懒，用一个全局状态存储，每一项代表一个Hook创建的状态，那么每一项都需要和其所在的组件关联起来，`useEffect`的实现也变复杂了。尝试了各种方法都有BUG，最后翻了一下Preact的源码才恍然大悟：将状态存在组件上，设置两个全局变量`currentComponent`和`currentHookId`，每次组件函数执行之前将`currentComponent`设置为该组件，将`currentHookId`置`0`，这样组件内部调用Hook时就能通过`currentComponent`拿到当前组件，通过`currentHookId`拿到Hook所创建状态的编号并作为哈希表的键，这很好地解释了：1. React要求Hooks只能在组件内部执行，否则拿不到`currentComponent`；2. React要求Hooks不能放置在分支语句下面，必须是函数体top level，因为走不同分支可能导致`currentHookId`错位。
+实现的难点其实是怎么封装“青春版”Hooks用到的那些全局变量，比如`memo`和`initOrClear`，因为我们不知道用户会调用多少次Hook，不可能预先准备足够的全局变量。那用数据结构吧，因为有一个查找旧状态进行比对的过程，首先想到哈希表，但是用什么作为键呢？我最初的想法是直接`WeakMap`用状态作为键，值代表状态是否`dirty`，很快意识到思路不对，例如`useState([])`，别忘了组件函数每次都会重新执行，所以每次都会创建一个新的`[]`，和上次的`[]`不是一个东西。而且我一开始并没有想到将状态存在组件VNode上，反而想偷懒，用一个全局状态存储，每一项代表一个Hook创建的状态，那么每一项都需要和其所在的组件关联起来，`useEffect`的实现也变复杂了。尝试了各种方法都有BUG，最后翻了一下Preact的源码才恍然大悟：将状态存在组件上，设置两个全局变量`currentComponent`和`currentHookId`，每次组件函数执行之前将`currentComponent`设置为该组件，将`currentHookId`置`0`，这样组件内部调用Hook时就能通过`currentComponent`拿到当前组件，通过`currentHookId`拿到Hook所创建状态的编号并作为哈希表的键，这很好地解释了：
 
-具体实现上可以聪明一点，在创建`VNodeComponent`的时候对`component`做个封装，免得后面用到的地方还要重复处理：
+1. React要求Hooks只能在组件内部执行，否则拿不到`currentComponent`；
+2. React要求Hooks不能放置在分支语句下面，必须是函数体top level，因为走不同分支可能导致`currentHookId`错位。
+
+具体实现上可以聪明一点，在创建`VNodeComponent`的时候对`component`做个封装，免得每次调用组件函数都要手动重置`currentComponent`和`currentHookId`：
 
 ```ts
 export type UseStateHookState = { type: 'useState', state: unknown, dirty: boolean }; // [!code ++]
@@ -879,7 +879,7 @@ export const h = (component: (state: unknown) => VNode, state?: unknown) => {
 
 class组件将一个数据结构和它相关的逻辑内聚在一起本意是好的，响应式的问题其实只是我们按照符合自己思维模式的方式`this.state.count += 1`改变状态的时候，框架不知道我们做了这样的改变。如果，我是说如果，有一个框架能够让我们以这种更自然的方式编写代码，一个状态更新了，那么所有关联的状态和副作用都自动更新或触发，不需要手动声明依赖关系，你会更青睐这个框架吗？
 
-没错，这样的框架是存在的，它就是~~Svelte~~ ~~Mobx~~ Vue。实现这个机制的关键在于两个设计模式：**代理模式和观察者模式**。如果说React是对人们修改状态的方法做了限制（`setState`），那么Vue就是对我们初始化状态的方法做了限制（`ref`）。我们使用框架API初始化状态之后拿到的其实是一个代理对象，而这个代理本身又是一个被观察的目标，当它改变时，会主动推送更改至所有观察者。由于初始化只要做一次，心智负担通常轻很多。
+没错，这样的框架是存在的，它就是~~Svelte~~ ~~Mobx~~ ~~Valtio~~ Vue。实现这个机制的关键在于两个设计模式：**代理模式和观察者模式**。如果说React是对人们修改状态的方法做了限制（`setState`），那么Vue就是对我们初始化状态的方法做了限制（`ref`）。我们使用框架API初始化状态之后拿到的其实是一个代理对象，而这个代理本身又是一个被观察的目标，当它改变时，会主动推送更改至所有观察者。由于初始化只要做一次，心智负担通常轻很多。
 
 JS从语言层面支持对象代理，我们用一小段代码就可以说清楚Vue的响应式原理：
 
@@ -971,6 +971,6 @@ class Counter {
 }
 ```
 
-具体实现上有一个注意点：Vue Hook定义的状态可能与渲染函数无关，当它们改变时不需要触发渲染函数的重新执行。解决方案也很简单，渲染函数要用到的状态，在渲染函数被执行时一定会`get`它的值，因此我们只在`getter`里面增加状态改变触发Diff Patch的观察者就行，这也是Vue原理所说的先触摸（touch）再追踪（track）。其他实现细节和React组件大同小异，甚至可以直接复用之前的`VNodeComponent`类型而不用额外定义一个新的`VNode`类型，因为`setup()`返回的渲染函数就是一个React语境中的组件函数。完整代码在[这里](https://github.com/EverSeenTOTOTO/mini-framework/blob/main/src/vue/index.ts)。
+具体实现上有一个注意点：Vue Hook定义的状态可能与渲染函数无关，当它们改变时不需要触发渲染函数的重新执行。解决方案也很简单，渲染函数要用到的状态，在渲染函数被执行时一定会`get`它的值，因此我们只在`getter`里面增加状态改变触发Diff Patch的观察者，这也是Vue原理所说的先触摸（touch）再追踪（track）。其他实现细节和React组件大同小异，甚至可以直接复用之前的`VNodeComponent`类型而不用额外定义一个新的`VNode`类型，因为`setup()`返回的渲染函数就是一个React语境中的组件函数。完整代码在[这里](https://github.com/EverSeenTOTOTO/mini-framework/blob/main/src/vue/index.ts)。
 
 至此，我们的微型框架主体也基本完成了，不算测试案例的话，总计不到1000行代码，还是很nice的。

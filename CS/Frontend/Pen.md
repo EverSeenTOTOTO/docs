@@ -2,7 +2,7 @@
 import PenDemo from '@vp/page-only/PenDemo.vue';
 </script>
 
-# 博客小工具开发实践
+# 博客开发实践
 
 ## 2024-09-17
 
@@ -85,20 +85,23 @@ import { h } from 'vue';
 import VpButton from '../Button.vue';
 import ReactWrap from '../ReactWrap.vue';
 import VueWrap from '../VueWrap';
+import { useMemo } from 'react';
 
 const App: React.FC = () => {
   const [count, setCount] = React.useState(0);
 
+  const vueApp = useMemo(() => ({
+    setup() {
+      return () => h(
+        VpButton,
+        { onClick: () => setCount(count + 1) },
+        () => `点我：${count}`
+      )
+    }
+  }), [count])
+
   return <VueWrap
-    App={{
-      setup() {
-        return () => h(
-          VpButton,
-          { onClick: () => setCount(count + 1) },
-          () => `点我：${count}`
-        )
-      }
-    }}
+    App={vueApp}
     style={{
       display: 'inline-block',
     }}
@@ -109,7 +112,6 @@ const App: React.FC = () => {
 <template>
   <ReactWrap :App="App" :style="{ 'display': 'inline-block', 'border': '1px solid #d5d5d5' }" />
 </template>
-
 ```
 
 ## 2023-10-28

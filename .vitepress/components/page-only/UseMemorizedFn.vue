@@ -4,6 +4,7 @@ import { h } from 'vue';
 import VpButton from '../Button.vue';
 import ReactWrap from '../ReactWrap.vue';
 import VueWrap from '../VueWrap';
+import { useMemo } from 'react';
 
 const useSmartCallback = <T, P>(fn: (...params: P[]) => T) => {
   const fnRef = useRef<typeof fn>(fn);
@@ -18,16 +19,18 @@ const useSmartCallback = <T, P>(fn: (...params: P[]) => T) => {
 const TestBtn: React.FC<{ onClick(): void, children: React.ReactNode }> = React.memo(({ onClick, children }) => {
   console.log(`rerender: ${children}`);
 
+  const App = useMemo(() => ({
+    setup() {
+      return () => h(
+        VpButton,
+        { onClick },
+        () => children
+      )
+    }
+  }), [onClick, children])
+
   return <VueWrap
-    App={{
-      setup() {
-        return () => h(
-          VpButton,
-          { onClick },
-          () => children
-        )
-      }
-    }}
+    App={App}
     style={{
       display: 'inline-block',
     }}

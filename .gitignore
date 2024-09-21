@@ -1,3 +1,4 @@
 .vitepress/dist
 .vitepress/cache
 .vitepress/square.wasm
+*.tar.gz

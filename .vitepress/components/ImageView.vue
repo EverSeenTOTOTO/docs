@@ -15,7 +15,7 @@ const closePreview = () => {
 
 const trigger = ref<HTMLImageElement | null>(null);
 const pointer = usePointer();
-const show = () => {
+const openPreview = () => {
   transformOrigin.value = `${pointer.x.value}px ${pointer.y.value}px`
 
   if (!trigger.value) return;
@@ -27,11 +27,11 @@ const show = () => {
 
 </script>
 <template>
-  <Modal :transformOrigin="transformOrigin" :open="open" @maskClick="closePreview" @wrapClick="closePreview">
+  <Modal :transformOrigin="transformOrigin" :open="open" @click="closePreview">
     <img class="img" :src="src" :alt="src"
       :style="{ '--scaleWidth': `${scaleRate.h}%`, '--scaleHeight': `${scaleRate.w}%` }" />
   </Modal>
-  <img ref="trigger" v-bind="$attrs" :src="src" :alt="src" @click="show" />
+  <img ref="trigger" v-bind="$attrs" :src="src" :alt="src" @click="openPreview" />
 </template>
 <style>
 .main img {

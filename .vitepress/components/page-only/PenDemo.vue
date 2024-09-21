@@ -4,20 +4,23 @@ import { h } from 'vue';
 import VpButton from '../Button.vue';
 import ReactWrap from '../ReactWrap.vue';
 import VueWrap from '../VueWrap';
+import { useMemo } from 'react';
 
 const App: React.FC = () => {
   const [count, setCount] = React.useState(0);
 
+  const vueApp = useMemo(() => ({
+    setup() {
+      return () => h(
+        VpButton,
+        { onClick: () => setCount(count + 1) },
+        () => `点我：${count}`
+      )
+    }
+  }), [count])
+
   return <VueWrap
-    App={{
-      setup() {
-        return () => h(
-          VpButton,
-          { onClick: () => setCount(count + 1) },
-          () => `点我：${count}`
-        )
-      }
-    }}
+    App={vueApp}
     style={{
       display: 'inline-block',
     }}
