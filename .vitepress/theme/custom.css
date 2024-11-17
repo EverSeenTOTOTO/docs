@@ -6,6 +6,8 @@
 
   --vp-layout-max-width: 1520px;
 
+  --vp-c-pointer: rgba(60, 60, 67, 0.6);
+
   --vp-c-bg: #eceff1;
   --vp-c-bg-alt: #e3ebef;
   --vp-c-bg-elv: #ffffff;
@@ -13,6 +15,8 @@
 }
 
 .dark {
+  --vp-c-pointer: rgba(255, 255, 245, 0.86);
+
   --vp-c-bg: #1b1b1f;
   --vp-c-bg-alt: #161618;
   --vp-c-bg-elv: #202127;
@@ -23,6 +27,46 @@
   max-width: 880px !important;
 }
 
+.VPNavBarMenuLink:hover {
+  background-color: var(--vp-c-bg-alt);
+}
+
 .vp-doc h2 {
   margin: 24px 0 16px;
+}
+
+.VPNavBarTitle.has-sidebar .title span {
+  width: 20ch;
+  white-space: nowrap;
+  overflow: hidden;
+  border-right: 4px solid var(--vp-c-pointer);
+  animation: typing 3.2s steps(20, end), cursor-blink 0.8s step-end infinite alternate;
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 20ch;
+  }
+}
+
+@keyframes cursor-blink {
+  50% {
+    border-color: transparent;
+  }
+}
+
+.Layout .VPSidebar:not(.open) {
+  padding: var(--vp-nav-height) 0 96px;
+}
+
+.Layout .VPSidebar .group {
+  width: var(--vp-sidebar-width);
+  padding: 0;
+}
+
+.VPDocOutlineItem .outline-link:hover {
+  color: var(--vp-c-brand-1);
 }

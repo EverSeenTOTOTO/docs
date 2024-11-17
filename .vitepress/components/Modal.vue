@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from "vue";
 
-const { open, transformOrigin } = defineProps(['open', 'transformOrigin'])
-const emit = defineEmits(['click', 'afterOpenChange'])
+const { open, transformOrigin } = defineProps(["open", "transformOrigin"]);
+const emit = defineEmits(["click", "afterOpenChange"]);
 
-const modal = ref(null)
+const modal = ref(null);
 
 const onClick = () => {
-  emit('click')
-}
+  emit("click");
+};
 const onOpenChange = (open: boolean) => {
-  emit("afterOpenChange", open)
-}
+  emit("afterOpenChange", open);
+};
 </script>
 <template>
   <ClientOnly>

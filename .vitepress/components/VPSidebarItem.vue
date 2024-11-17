@@ -83,18 +83,20 @@ function onCaretClick() {
 </template>
 
 <style scoped>
-.VPSidebarItem.level-0 {
-  padding-bottom: 24px;
-}
-
-.VPSidebarItem.collapsed.level-0 {
-  padding-bottom: 10px;
-}
-
 .item {
   position: relative;
   display: flex;
   width: 100%;
+  padding: 0px 32px;
+}
+
+.VPSidebarItem.level-0>.item {
+  cursor: pointer;
+  padding: 10px 32px;
+}
+
+.item:hover {
+  background-color: var(--vp-code-line-diff-add-color);
 }
 
 .VPSidebarItem.collapsible>.item {
@@ -219,10 +221,6 @@ function onCaretClick() {
 .VPSidebarItem.level-5 .items {
   border-left: 1px solid var(--vp-c-divider);
   padding-left: 16px;
-}
-
-.VPSidebarItem {
-  transition: all 0.3s;
 }
 
 .VPSidebarItem.collapsed .items {
