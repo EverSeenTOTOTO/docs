@@ -63,10 +63,26 @@
 }
 
 .Layout .VPSidebar .group {
-  width: var(--vp-sidebar-width);
+  width: 100%;
   padding: 0;
+}
+
+@media (min-width: 1440px) {
+  .Layout .VPSidebar {
+    width: calc(var(--vp-sidebar-width) + 32px);
+  }
+
+  .Layout .VPNavBar.has-sidebar .container > .title {
+    padding-left: 32px;
+    width: calc(var(--vp-sidebar-width) + 32px);
+  }
+
+  .Layout .VPNavBar.has-sidebar .content {
+    padding-left: calc(var(--vp-sidebar-width) + 32px);
+  }
 }
 
 .VPDocOutlineItem .outline-link:hover {
   color: var(--vp-c-brand-1);
 }
+
