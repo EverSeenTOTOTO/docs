@@ -30,7 +30,7 @@ const colors = computed(() => isDark.value
 
 const { Terminal } = xterm as any;
 
-const docScrollLocked = useScrollLock(document?.documentElement);
+const docScrollLocked = useScrollLock(typeof document !== 'undefined' ? document.documentElement : null);
 
 const toggleLock = () => {
   docScrollLocked.value = !docScrollLocked.value;

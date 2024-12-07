@@ -258,7 +258,7 @@ type at<L, index extends uint> = ge<index, len<L>> extends true
     : at<rest<L>, sub<index, _1>>;
 ```
 
-ts中有一个限制是不支持将泛型类型作为泛型参数（放在c++里面就是“模板的模板”，`template<template<typename...> typename T>`），即下面的语法是不支持的：
+ts中有一个限制是<Notation type="underline">不支持将泛型类型作为泛型参数（放在c++里面就是“模板的模板”，`template<template<typename...> typename T>`）</Notation>，即下面的语法是不支持的：
 
 ```ts
 type map<L, F> = L extends [...infer Ls]
@@ -723,7 +723,7 @@ cout << g(x = 2) << endl;   // ((y ^ 3) + 2)，因为g是对y的函数，与x无
 cout << g(y = 3) << endl;   // 29
 ```
 
-最后把之前求得的导函数也拿来测试一下吧，一个轻量又很优雅的数学库的雏形就这样出现了。在ts中，虽然没有运算符重载，但可以通过函数调用模拟，因此应该也是能够实现等效功能的，只是我写到这里时已然神志不清，~~都是调试c++模板调的~~，暂且不做展开了。
+最后把之前求得的导函数也拿来测试一下吧，一个轻量又很优雅的数学库的雏形就这样出现了。在ts中，虽然没有运算符重载，但可以通过函数调用模拟，因此应该也是能够实现等效功能的，只是我写到这里时已然神志不清，<Notation type="del">都是调试c++模板调的</Notation>，暂且不做展开了。
 
 ```cpp
 auto foo = (4^(3*x+2)) + y*(3-x);

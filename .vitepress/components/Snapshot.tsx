@@ -1,6 +1,6 @@
 import React, { HTMLAttributes, useCallback, useEffect, useRef } from "react";
 
-const serializer = new XMLSerializer();
+const serializer = typeof document !== 'undefined' ? new XMLSerializer() : { serializeToString: () => '' };
 
 export default (name: string) => {
   const From: React.FC<{ render: (props: any) => React.ReactNode }> = ({ render }) => {

@@ -59,7 +59,7 @@
     2.  再检查`extends`左边的类型`checkType`，对应`T1`和`T2`，任意一个是否与另一个关联`isRelatedTo`；
     3.  最后检查对应分支类型是否相互关联，即`X1`是否与`X2`、`Y1`是否与`Y2`关联。
 
-    `isTypeIdenticalTo`涉及对内部类型标记的判断，这是此解法将`{a:1}&{b:2}`和`{a:1,b:2}`视为不相等的关键，也是我们得以区分`readonly`的关键。但TSC在处理条件类型时会先将其实例化（对条件类型求分支具体值）再作类型检查，因此需要设法让TSC惰性求值，也是下面`<P>() => P`的作用，构造一个Deferred Conditional Type，让TSC比对两个条件类型的数据结构而非推导出的具体分支值。
+    `isTypeIdenticalTo`涉及对内部类型标记的判断，这是此解法将`{a:1}&{b:2}`和`{a:1,b:2}`视为不相等的关键，也是我们得以区分`readonly`的关键。但TSC在处理条件类型时会先将其实例化（对条件类型求分支具体值）再作类型检查，因此需要设法<Notation>让TSC惰性求值，也是下面`<P>() => P`的作用，构造一个Deferred Conditional Type，让TSC比对两个条件类型的数据结构而非推导出的具体分支值</Notation>。
 
     总之，我们得到如下解法，首先构造两个条件类型`CondType1`和`CondType2`，使待判断目标`T`和`U`处在`extends`右边对应位置，然后再用一个条件类型对`CondType1`和`CondType2`进行相等性判断，以利用底层的比对机制：
 
@@ -182,7 +182,7 @@ function remove_readonly(T, K: keyof T) {
 }
 ```
 
-Conditional Types另一个特点是Distributive性质，当`extends`左边的`checkType`是联合类型时，联合类型将被展开分派。这是很多Conditional Types“怪异”行为的来源，也常用于实现对联合类型的filter、map等操作：
+Conditional Types另一个特点是Distributive性质，<Notation>当`extends`左边的`checkType`是联合类型时，联合类型将被展开分派</Notation>。这是很多Conditional Types“怪异”行为的来源，也常用于实现对联合类型的filter、map等操作：
 
 ```ts
 type remove_from_union<U, T> = U extends T ? never : U;
@@ -303,7 +303,7 @@ type intersect = foo & bar;
 type tuple = [foo, bar];
 ```
 
-我从编程语言相关的资料中陆续看到过一些关于协变和逆变的介绍，但始终没有得到一个完善的系统的描述。因此我决定不想得那么复杂，协变和逆变到底是什么？它们是“原有父子关系的一对集合（类型、范畴……），进行某变换之后是否能够保持该关系的**变换的性质**”的描述。
+我从编程语言相关的资料中陆续看到过一些关于协变和逆变的介绍，但始终没有得到一个完善的系统的描述。因此我决定不想得那么复杂，协变和逆变到底是什么？它们是“<Notation>原有父子关系的一对集合（类型、范畴……），进行某变换之后是否能够保持该关系的<Notation type="underline">变换的性质</Notation>”的描述</Notation>。这里多次强调，主体是“变换”而非变换前后的对象。
 
 协变即保持这种关系，通常比较符合我们的直觉，我们所接受的关于OOP的教育也强调了这一点（里氏代换原则）：任何基类可以出现的地方，子类都可以出现。那么`union[]`可以出现的地方，`foo[]`一定可以出现，换言之就是类型为`foo[]`的对象可以赋值给类型为`union[]`的变量。假如如存在一个变换将类型`T`转换为类型`T[]`：
 
@@ -345,7 +345,7 @@ let b: transform<foo> = a;
 
 TS中直接体现类型父子关系的无疑是Conditional Types，官方文档中值得留意的是这两句话：
 
-1.  multiple candidates for the same type variable in co-variant positions causes a union type to be inferred（出现在协变位置上同一类型变量的多个候选将被推断为联合类型）：
+1. <Notation>multiple candidates for the same type variable in co-variant positions causes a union type to be inferred（出现在协变位置上同一类型变量的多个候选将被推断为联合类型）</Notation>：
 
     ```ts
     type f1 = () => foo;
@@ -362,7 +362,7 @@ TS中直接体现类型父子关系的无疑是Conditional Types，官方文档�
     type x = transform<string, number>; // string | number
     ```
 
-2.  multiple candidates for the same type variable in contra-variant positions causes an intersection type to be inferred（出现在逆变位置上同一类型变量的多个候选将被推断为交叉类型）：
+2. <Notation>multiple candidates for the same type variable in contra-variant positions causes an intersection type to be inferred（出现在逆变位置上同一类型变量的多个候选将被推断为交叉类型）</Notation>：
 
     ```ts
     type f1 = (_: foo) => void;

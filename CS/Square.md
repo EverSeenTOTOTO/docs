@@ -8,7 +8,7 @@ import SquarePlayground from '@vp/SquarePlayground.vue'
 
 ## Playground
 
-这个简陋的 Playground 基于[xterm.js](https://xtermjs.org/)和轻量编辑器[codejar](https://github.com/antonmedv/codejar)制作。语法高亮也是通过正则匹配实现的，并没有 Language Server。
+这个简陋的 Playground 基于[xterm.js](https://xtermjs.org/)和轻量编辑器[codejar](https://github.com/antonmedv/codejar)制作。语法高亮也是通过正则匹配实现的，并没有 Language Server。你可以单步执行查看每条指令的效果。
 
 <SquarePlayground />
 
@@ -54,11 +54,11 @@ pub struct CallFrame {
 
 这或许是虚拟机实现中最难的部分。需要区分三个概念：函数定义、函数实例化和函数调用。
 
-**函数定义**发生在编译时，指编译器在遇到一个函数时，将它编译为的那段静态指令；
+<Notation type="circle">函数定义</Notation>发生在编译时，指编译器在遇到一个函数时，将它编译为的那段静态指令；
 
-**函数实例化**发生在运行时，对支持一类函数的语言来说，我们需要创建一个真正存在于内存、能够像常规值一样传来传去的结构（闭包），它至少有两个功能：定位到函数（指令）地址和捕获外部的局部变量；
+<Notation type="circle">函数实例化</Notation>发生在运行时，对支持一类函数的语言来说，我们需要创建一个真正存在于内存、能够像常规值一样传来传去的结构（闭包），它至少有两个功能：定位到函数（指令）地址和捕获外部的局部变量；
 
-**函数调用**也在运行时，实际调用的是函数实例（闭包），此时调用帧操作数栈顶应该分别是闭包和打包过的参数，调用过程大体如下，读者可以在上文的 Playground 中编写一个小函数并观察执行过程中指令和调用帧的变换：
+<Notation type="circle">函数调用</Notation>也在运行时，实际调用的是函数实例（闭包），此时调用帧操作数栈顶应该分别是闭包和打包过的参数，调用过程大体如下，读者可以在上文的 Playground 中编写一个小函数并观察执行过程中指令和调用帧的变换：
 
 1. 创建新的调用帧，记录当前的`pc`为RA（Return Address）并保存在新调用帧中，将参数推送进新调用帧的操作数栈，旧调用帧操作数栈退栈*2；
 2. 从闭包中取出函数地址并设置给`pc`，继续执行直到函数尾部的`RET`指令；

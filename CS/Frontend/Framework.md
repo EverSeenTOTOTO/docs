@@ -135,7 +135,7 @@ export type InstFillText = {
 };
 ```
 
-指令实现用的Canvas API，~~其实设计也抄的Canvas API~~。再次以`button`为例，给出翻译VDOM结点为渲染指令的过程，完整代码在[这里](https://github.com/EverSeenTOTOTO/mini-framework/blob/main/src/vdom/target-canvas.ts)：
+指令实现用的Canvas API，<Notation type="del">其实设计也抄的Canvas API</Notation>。再次以`button`为例，给出翻译VDOM结点为渲染指令的过程，完整代码在[这里](https://github.com/EverSeenTOTOTO/mini-framework/blob/main/src/vdom/target-canvas.ts)：
 
 ```ts
 export function emitButton(node: ts.VNodeButton, ctx: Context): RenderInst[] {
@@ -250,7 +250,7 @@ export function emitButton(node: ts.VNodeButton, ctx: Context): RenderInst[] {
 
 Diff Patch的概念相当普遍，当我们需要同步某类数据结构S为T时，一种做法是直接将S整个换成T，比如双缓冲模式，可能交换下两个缓冲区指针就行了。但很多时候这么简单粗暴的替换会导致所有在S上已经做的工作丢失了，产生重复劳动。比方说`npm install`生成`node_modules`的过程，如果无视本地已有的`node_modules`结构S，仅根据最新的依赖树结构T重新安装一遍，无疑会有很多不必要的下载、复制动作。对于Web框架，此处的“数据结构”即VDOM树，如果每次一点小更新都需要对整个VDOM树重新求值、创建DOM结点并替换原有的DOM结点，尽管表现出来的样式差异可能不大，却破坏了浏览器渲染引擎底层已经创建好的真实DOM树，渲染引擎需要重新计算布局、样式等信息，造成大范围的reflow，所有相关的JS代码也需要重新执行一遍，比如重新绑定事件回调，这个代价几乎是不可接受的。
 
-怎么办呢？既然整个替换不行，那就比对S和T的差异（Diff），仅对差异的地方做調整（Patch），把影响最小化呗。某种意义上这也是一种编译器，输入是数据结构S和T，输出是一系列动作（指令），指示我们该如何一步步操作S，将S变为T。举例来说，假如S和T是两个数组：
+怎么办呢？既然整个替换不行，那就比对S和T的差异（<Notation type="circle">Diff</Notation>），仅对差异的地方做調整（<Notation type="circle">Patch</Notation>），把影响最小化呗。某种意义上这也是一种编译器，输入是数据结构S和T，输出是一系列动作（指令），指示我们该如何一步步操作S，将S变为T。举例来说，假如S和T是两个数组：
 
 ```ts
 S = [1,2,3,4];
@@ -267,7 +267,7 @@ T = [1,3,3,2,4];
 ]
 ```
 
-回到Web框架，从前面的求值器实现中我们知道一个VDOM结点是可以和它所创建的真实DOM结点关联起来的，那就可以用一些Diff算法来比对新旧两棵VDOM树，对于有变化的VDOM结点，生成一系列变更动作（指令），然后找到关联的真实DOM结点将变更动作应用到上面去就是了。这个比对并生成动作的过程即所谓的`diff`过程，应用变更的过程即所谓的`commit`过程。还是举例说明：
+回到Web框架，从前面的求值器实现中我们知道一个VDOM结点是可以和它所创建的真实DOM结点关联起来的，那就可以用一些Diff算法来比对新旧两棵VDOM树，对于有变化的VDOM结点，生成一系列变更动作（指令），然后找到关联的真实DOM结点将变更动作应用到上面去就是了。这个比对并生成动作的过程即所谓的<Notation type="circle">diff</Notation>过程，应用变更的过程即所谓的<Notation type="circle">commit</Notation>过程。还是举例说明：
 
 ```ts
 const S = div(
@@ -471,7 +471,7 @@ export function render(vdom: web.VNode, container: HTMLElement) {
 }
 ```
 
-修改一下前面的用例，用一个函数`component`包装生成VDOM树的过程，通过提供不同的外部状态`state`，我们可以复用这段逻辑，生成结构相近的VDOM树。**组件的概念就这样悄无声息地出现了**：
+修改一下前面的用例，用一个函数`component`包装生成VDOM树的过程，通过提供不同的外部状态`state`，我们可以复用这段逻辑，生成结构相近的VDOM树。<Notation>组件的概念就这样悄无声息地出现了</Notation>：
 
 ```html
 <script>
@@ -571,14 +571,14 @@ export interface VNodeComponent<T> extends VNodeBase<T, 'component'> {
 }
 ```
 
-这里蕴含着“惰性求值”的思想，我们保存下了组件函数和执行所需的状态，而不是原地执行组件并保存得到的VDOM：
+这里蕴含着“<Notation type="circle">惰性求值</Notation>”的思想，我们保存下了组件函数和执行所需的状态，而不是原地执行组件并保存得到的VDOM：
 
 ```ts
 const Home = () => <Counter />; // 实际被编译为React.createElement(Counter)，框架内部可以自由控制Counter的执行时机
 const Home = () => Counter();   // Home执行连带着执行Counter，无法中断
 ```
 
-接着补充对`VNodeComponent`的求值和Diff Patch，在`evalComponent`中我们终于看到React那句著名宣言UI=F(State)的影子了：
+接着补充对`VNodeComponent`的求值和Diff Patch，在`evalComponent`中我们终于看到React那句著名宣言<Notation type="circle">UI=F(State)</Notation>的影子了：
 
 ```ts
 export function evalComponent(node: VNodeComponent) {
@@ -641,7 +641,7 @@ export function diffPatchComponent(source: VNodeComponent, target: VNodeComponen
 
 ## 响应式和状态管理
 
-上面用例中的注释很重要很重要，因为它引出了响应性话题：我们需要手动绑定状态改变后的重绘逻辑，这正是jQuery被淘汰的原因。这个例子中只要在按钮按下后更新状态还好，假如还有`<input>`标签呢？我们不仅要在状态改变时更改输入框里面的值，还要在用户输入后将输入变化同步给应用状态，即所谓的“**双向绑定**”。一个两个元素都需要手动绑定一组状态更新逻辑，应用复杂之后根本顶不住，稍有疏忽就会产生BUG。因此React和Vue最大的贡献是实现了响应性，我们只需要关注状态变更，由框架完成重绘或同步UI状态给应用状态的操作。
+上面用例中的注释很重要很重要，因为它引出了响应性话题：我们需要手动绑定状态改变后的重绘逻辑，这正是jQuery被淘汰的原因。这个例子中只要在按钮按下后更新状态还好，假如还有`<input>`标签呢？我们不仅要在状态改变时更改输入框里面的值，还要在用户输入后将输入变化同步给应用状态，即所谓的“<Notation type="circle">双向绑定</Notation>”。一个两个元素都需要手动绑定一组状态更新逻辑，应用复杂之后根本顶不住，稍有疏忽就会产生BUG。因此React和Vue最大的贡献是实现了响应性，我们只需要关注状态变更，由框架完成重绘或同步UI状态给应用状态的操作。
 
 ### React
 
@@ -833,7 +833,7 @@ const App = () => {
 
 `useState`和`useEffect`是其他Hooks的基石，还有些React18新出现的Hooks我还不是很熟悉就不介绍了。现在我们要做的，就是汇总以上知识，在自己的微型React框架中实现真正可复用的Hooks，而不是上面的一次性“青春版”。
 
-实现的难点其实是怎么封装“青春版”Hooks用到的那些全局变量，比如`memo`和`initOrClear`，因为我们不知道用户会调用多少次Hook，不可能预先准备足够的全局变量。那用数据结构吧，因为有一个查找旧状态进行比对的过程，首先想到哈希表，但是用什么作为键呢？我最初的想法是直接`WeakMap`用状态作为键，值代表状态是否`dirty`，很快意识到思路不对，例如`useState([])`，别忘了组件函数每次都会重新执行，所以每次都会创建一个新的`[]`，和上次的`[]`不是一个东西。而且我一开始并没有想到将状态存在组件VNode上，反而想偷懒，用一个全局状态存储，每一项代表一个Hook创建的状态，那么每一项都需要和其所在的组件关联起来，`useEffect`的实现也变复杂了。尝试了各种方法都有BUG，最后翻了一下Preact的源码才恍然大悟：将状态存在组件上，设置两个全局变量`currentComponent`和`currentHookId`，每次组件函数执行之前将`currentComponent`设置为该组件，将`currentHookId`置`0`，这样组件内部调用Hook时就能通过`currentComponent`拿到当前组件，通过`currentHookId`拿到Hook所创建状态的编号并作为哈希表的键，这很好地解释了：
+实现的难点其实是怎么封装“青春版”Hooks用到的那些全局变量，比如`memo`和`initOrClear`，因为我们不知道用户会调用多少次Hook，不可能预先准备足够的全局变量。那用数据结构吧，因为有一个查找旧状态进行比对的过程，首先想到哈希表，但是用什么作为键呢？我最初的想法是直接`WeakMap`用状态作为键，值代表状态是否`dirty`，很快意识到思路不对，例如`useState([])`，别忘了组件函数每次都会重新执行，所以每次都会创建一个新的`[]`，和上次的`[]`不是一个东西。而且我一开始并没有想到将状态存在组件VNode上，反而想偷懒，用一个全局状态存储，每一项代表一个Hook创建的状态，那么每一项都需要和其所在的组件关联起来，`useEffect`的实现也变复杂了。尝试了各种方法都有BUG，最后翻了一下Preact的源码才恍然大悟：<Notation>将状态存在组件上，设置两个全局变量`currentComponent`和`currentHookId`，每次组件函数执行之前将`currentComponent`设置为该组件，将`currentHookId`置`0`，这样组件内部调用Hook时就能通过`currentComponent`拿到当前组件，通过`currentHookId`拿到Hook所创建状态的编号并作为哈希表的键</Notation>，这很好地解释了：
 
 1. React要求Hooks只能在组件内部执行，否则拿不到`currentComponent`；
 2. React要求Hooks不能放置在分支语句下面，必须是函数体top level，因为走不同分支可能导致`currentHookId`错位。
@@ -879,7 +879,7 @@ export const h = (component: (state: unknown) => VNode, state?: unknown) => {
 
 class组件将一个数据结构和它相关的逻辑内聚在一起本意是好的，响应式的问题其实只是我们按照符合自己思维模式的方式`this.state.count += 1`改变状态的时候，框架不知道我们做了这样的改变。如果，我是说如果，有一个框架能够让我们以这种更自然的方式编写代码，一个状态更新了，那么所有关联的状态和副作用都自动更新或触发，不需要手动声明依赖关系，你会更青睐这个框架吗？
 
-没错，这样的框架是存在的，它就是~~Svelte~~ ~~Mobx~~ ~~Valtio~~ Vue。实现这个机制的关键在于两个设计模式：**代理模式和观察者模式**。如果说React是对人们修改状态的方法做了限制（`setState`），那么Vue就是对我们初始化状态的方法做了限制（`ref`）。我们使用框架API初始化状态之后拿到的其实是一个代理对象，而这个代理本身又是一个被观察的目标，当它改变时，会主动推送更改至所有观察者。由于初始化只要做一次，心智负担通常轻很多。
+没错，这样的框架是存在的，它就是<Notation type="cross">Svelte</Notation> <Notation type="cross">Mobx</Notation> <Notation type="cross">Valtio</Notation> Vue。实现这个机制的关键在于两个设计模式：**代理模式和观察者模式**。如果说React是对人们修改状态的方法做了限制（`setState`），那么Vue就是对我们初始化状态的方法做了限制（`ref`）。我们使用框架API初始化状态之后拿到的其实是一个代理对象，而这个代理本身又是一个被观察的目标，当它改变时，会主动推送更改至所有观察者。由于初始化只要做一次，心智负担通常轻很多。
 
 JS从语言层面支持对象代理，我们用一小段代码就可以说清楚Vue的响应式原理：
 
@@ -971,6 +971,6 @@ class Counter {
 }
 ```
 
-具体实现上有一个注意点：Vue Hook定义的状态可能与渲染函数无关，当它们改变时不需要触发渲染函数的重新执行。解决方案也很简单，渲染函数要用到的状态，在渲染函数被执行时一定会`get`它的值，因此我们只在`getter`里面增加状态改变触发Diff Patch的观察者，这也是Vue原理所说的先触摸（touch）再追踪（track）。其他实现细节和React组件大同小异，甚至可以直接复用之前的`VNodeComponent`类型而不用额外定义一个新的`VNode`类型，因为`setup()`返回的渲染函数就是一个React语境中的组件函数。完整代码在[这里](https://github.com/EverSeenTOTOTO/mini-framework/blob/main/src/vue/index.ts)。
+具体实现上有一个注意点：Vue Hook定义的状态可能与渲染函数无关，当它们改变时不需要触发渲染函数的重新执行。解决方案也很简单，渲染函数要用到的状态，在渲染函数被执行时一定会`get`它的值，因此我们只在`getter`里面增加状态改变触发Diff Patch的观察者，这也是Vue原理所说的先触摸（<Notation type="circle">touch</Notation>）再追踪（<Notation type="circle">track</Notation>）。其他实现细节和React组件大同小异，甚至可以直接复用之前的`VNodeComponent`类型而不用额外定义一个新的`VNode`类型，因为`setup()`返回的渲染函数就是一个React语境中的组件函数。完整代码在[这里](https://github.com/EverSeenTOTOTO/mini-framework/blob/main/src/vue/index.ts)。
 
 至此，我们的微型框架主体也基本完成了，不算测试案例的话，总计不到1000行代码，还是很nice的。

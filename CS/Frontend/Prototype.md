@@ -2,7 +2,7 @@
 
 ## JS的原型机制
 
-`prototype`和`__proto__`傻傻分不清楚？MDN的[这篇文档](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/Object_prototypes)有一些介绍。其实记住一句话就够用了：**派生类的`prototype`和父类的`prototype`相同，实例的`__proto__`和构造类的`prototype`相同**。不过，这里的“相同”隐含了可以沿着原型链追溯的意思，并不一定真的完全相等。因为如果我们用派生类的实例去`instanceof`基类，结果应当也是`true`。
+`prototype`和`__proto__`傻傻分不清楚？MDN的[这篇文档](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/Object_prototypes)有一些介绍。其实记住一句话就够用了：<Notation>派生类的`prototype`和父类的`prototype`相同，实例的`__proto__`和构造类的`prototype`相同</Notation>。不过，这里的“相同”隐含了可以沿着原型链追溯的意思，并不一定真的完全相等。因为如果我们用派生类的实例去`instanceof`基类，结果应当也是`true`。
 
 :::info
 由于`__proto__`是一个已经废弃的属性，下文我们使用官方推荐的API`Object.getPrototypeOf`和`Object.setPrototypeOf`来操作之。
@@ -73,7 +73,7 @@ Derived.prototype = new Base();
 :::
 
 
-写这篇博客的起因是遇到了一个BUG，在试图修改并重用对象的`__proto__`时，不小心污染了`Function.prototype`。因此有这种需求的话要注意两点，一要避免丢失原型上本来有的东西，二要避免污染全局空间：
+写这篇博客的起因是遇到了一个BUG，在试图修改并重用对象的`__proto__`时，不小心污染了`Function.prototype`。因此有这种需求的话要注意两点，<Notation type="underline">一要避免丢失原型上本来有的东西，二要避免污染全局空间</Notation>：
 
 ```js
 // Base.__proto__不再是Function.prototype，意味着来自Function.prototype的bind、apply等方法都丢失了
