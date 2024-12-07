@@ -1,22 +1,23 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { HTMLAttributes, useContext, useEffect, useImperativeHandle, useRef } from "react";
 import { dataSymbol } from "vitepress/dist/client/app/data.js";
-import { createApp } from "vue";
+import { Component, createApp } from "vue";
 import { ReactWrapContext } from "./context";
 
-export default ({ App, ...rest }) => {
-	const { vpData } = useContext(ReactWrapContext);
-	const container = useRef<HTMLDivElement>(null);
+export default React.forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { app: Component }>(({ app: propsApp, ...rest }, forwardRef) => {
+  const { vpData } = useContext(ReactWrapContext);
+  const ref = useRef<HTMLDivElement>(null);
 
-	useEffect(() => {
-		const app = createApp(App);
+  useImperativeHandle(forwardRef, () => ref.current!);
 
-		app.provide(dataSymbol, vpData);
-		app.mount(container.current!);
+  useEffect(() => {
+    const app = createApp(propsApp);
 
-		return () => {
-			app.unmount();
-		};
-	}, [vpData, App]);
+    app.provide(dataSymbol, vpData);
+    app.mount(ref.current!);
+    return () => {
+      app.unmount();
+    };
+  }, [vpData, propsApp]);
 
-	return <div ref={container} {...rest} />;
-};
+  return <div ref={ref} {...rest} />;
+});

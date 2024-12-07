@@ -1,7 +1,6 @@
 <script setup lang="tsx">
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { h } from 'vue';
-import VpButton from '../Button.vue';
+import { h, ref, watch } from 'vue';
 import ReactWrap from '../ReactWrap.vue';
 import VueWrap from '../VueWrap';
 import { useMemo } from 'react';
@@ -18,26 +17,30 @@ const useSmartCallback = <T, P>(fn: (...params: P[]) => T) => {
 
 const TestBtn: React.FC<{ onClick(): void, children: React.ReactNode }> = React.memo(({ onClick, children }) => {
   console.log(`rerender: ${children}`);
+  const [background, setBackground] = useState('#ade5ef');
 
-  const App = useMemo(() => ({
-    setup() {
-      return () => h(
-        VpButton,
-        { onClick },
-        () => children
-      )
-    }
-  }), [onClick, children])
+  useEffect(() => {
+    setBackground('#30add3');
+    setTimeout(() => {
+      setBackground('#ade5ef');
+    }, 300);
+  }, [onClick]);
 
-  return <VueWrap
-    App={App}
+  return <button
+    type="button"
+    onClick={onClick}
     style={{
-      display: 'inline-block',
+      borderRadius: 4,
+      paddingInline: 6,
+      background,
+      color: '#000'
     }}
-  />
-})
+  >
+    {children}
+  </button>
+});
 
-const App = () => {
+const app = () => {
   const [count, setCount] = useState(0);
 
   const setCountNaive = () => setCount(count + 1);
@@ -51,7 +54,12 @@ const App = () => {
     setCount(count + 1)
   })
 
-  return <>
+  return <div
+    style={{
+      display: 'flex',
+      gap: 8
+    }}
+  >
     <TestBtn onClick={setCountNaive}> Inc </TestBtn>
     <TestBtn onClick={setCountNoDep}> IncNoDep </TestBtn>
     <TestBtn onClick={setCountWithDep}> IncWithDep </TestBtn>
@@ -59,10 +67,10 @@ const App = () => {
     <div>
       {count}
     </div>
-  </>
+  </div >
 };
 
 </script>
 <template>
-  <ReactWrap :App="App" />
+  <ReactWrap :app="app" />
 </template>

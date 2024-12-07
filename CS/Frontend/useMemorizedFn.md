@@ -76,8 +76,8 @@ export default () => {
     setCount(count + 1);
   }, [count]);
   const setCountSmart = useSmartCallback(() => { // [!code ++]
-    setCount(count + 1) // [!code ++];
-  }) // [!code ++];
+    setCount(count + 1) // [!code ++]
+  }) // [!code ++]
 
   return <div>
     <TestBtn onClick={setCountNaive}>Inc</TestBtn>
@@ -91,6 +91,6 @@ export default () => {
 };
 ```
 
-打开控制台观察发生重绘的组件：
+下面例子在检测到重绘时将变更背景色，300ms之后才重置。点击各按钮并观察发生重绘的组件，IncSmart应当保持不变：
 
 <UseMemorizedFn />

@@ -53,7 +53,7 @@ const DraggableIcon: React.FC<{ svgRef: React.MutableRefObject<SVGSVGElement | n
   </g>
 }
 
-const App: React.FC = () => {
+const app: React.FC = () => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [leftPos, setLeftPos] = useState<[number, number]>([100, 350]);
   const [rightPos, setRightPos] = useState<[number, number]>([350, 350]);
@@ -72,8 +72,7 @@ const App: React.FC = () => {
 }
 </script>
 <template>
-  <h2>Quadratic-bezier</h2>
-  <ReactWrap :App="App" class="svg-demo" />
+  <ReactWrap :app="app" class="svg-demo" />
 </template>
 <style lang="css">
 .svg-demo {

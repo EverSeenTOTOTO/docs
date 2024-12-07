@@ -1,12 +1,15 @@
 <script setup>
-import SVG from '@vp/page-only/SVG.vue'
+import QuadraticBezier from '@vp/page-only/QuadraticBezier.vue'
+import ForeignObjectDemo from '@vp/page-only/ForeignObjectDemo.vue'
 </script>
 
 # SVG
 
-[svg-tutorial](https://svg-tutorial.com/svg/quadratic-bezier) 中有一些例子很不错，尝试复刻一下。
+## Quadratic-bezier
 
-<SVG />
+[svg-tutorial](https://svg-tutorial.com/svg/quadratic-bezier) 中这个例子很漂亮，尝试复刻一下。
+
+<QuadraticBezier />
 
 ::: details 点击展开源码
 
@@ -66,7 +69,7 @@ const DraggableIcon: React.FC<{ svgRef: React.MutableRefObject<SVGSVGElement | n
   </g>
 }
 
-const App: React.FC = () => {
+const app: React.FC = () => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [leftPos, setLeftPos] = useState<[number, number]>([100, 350]);
   const [rightPos, setRightPos] = useState<[number, number]>([350, 350]);
@@ -85,8 +88,7 @@ const App: React.FC = () => {
 }
 </script>
 <template>
-  <h2>Quadratic-bezier</h2>
-  <ReactWrap :App="App" class="svg-demo" />
+  <ReactWrap :app="app" class="svg-demo" />
 </template>
 <style lang="css">
 .svg-demo {
@@ -137,3 +139,129 @@ const App: React.FC = () => {
 ```
 
 :::
+
+### foreignObject
+
+SVG 中有一个`foreignObject`，理论上可以放置各种HTML元素，因此可以在一些静态场景用于“快照”截图，或者在SVG驱动的绘图引擎中与框架组件集成。这个例子中，第一个按钮是真实的按钮，其他的都是“快照”：
+
+<ForeignObjectDemo />
+
+
+::: details 点击展开源码
+
+::: code-group
+
+```tsx [Snapshot.tsx]
+import React, { HTMLAttributes, useCallback, useEffect, useRef } from "react";
+
+const serializer = new XMLSerializer();
+
+export default (name: string) => {
+  const From: React.FC<{ render: (props: any) => React.ReactNode }> = ({ render }) => {
+    const ref = useRef<any>();
+
+    const snapshot = useCallback((e: Event) => {
+      const el = ref.current;
+
+      if (!el) return;
+
+      const clone = el.cloneNode(true);
+      const styles = window.getComputedStyle(el);
+
+      for (let style of styles) {
+        clone.style[style] = styles[style];
+      }
+
+      const toIndex = (e as CustomEvent).detail;
+
+      document.dispatchEvent(new CustomEvent(`${name}_${toIndex}`, {
+        detail: serializer.serializeToString(clone)
+      }))
+    }, []);
+
+    useEffect(() => {
+      document.addEventListener(`${name}_snap`, snapshot);
+
+      return () => document.removeEventListener(`${name}_snap`, snapshot);
+    }, []);
+
+    return render({ ref });
+  }
+
+  let toIndex = 0;
+  const To: React.FC<{ dependencies?: any[] } & HTMLAttributes<SVGElement>> = ({ dependencies = [], ...rest }) => {
+    const ref = useRef<SVGForeignObjectElement>(null);
+
+    useEffect(() => {
+      ++toIndex;
+      const handle = (e: Event) => {
+        if (!ref.current) return;
+        ref.current.innerHTML = (e as CustomEvent).detail;
+      }
+
+      document.addEventListener(`${name}_${toIndex}`, handle);
+
+      return () => document.removeEventListener(`${name}_${toIndex}`, handle);
+    }, []);
+    useEffect(() => {
+      document.dispatchEvent(new CustomEvent(`${name}_snap`, {
+        detail: toIndex // only notify myself
+      }));
+    }, dependencies);
+
+    return <svg xmlns="http://www.w3.org/2000/svg" {...rest}>
+      <foreignObject ref={ref} x="0" y="0" width="100%" height="100%" />
+    </svg>
+  };
+
+
+  return { From, To }
+}
+```
+
+```vue [Demo.vue]
+<script setup lang="tsx">
+import React, { useMemo, useState } from 'react';
+import { h } from 'vue';
+import Button from '../Button.vue';
+import ReactWrap from '../ReactWrap.vue';
+import createSnapshot from '../Snapshot.tsx';
+import VueWrap from '../VueWrap.tsx';
+
+const Snapshot = createSnapshot("demo");
+
+const app = () => {
+  const [count, setCount] = useState(0);
+
+  const btn = useMemo(() => ({
+    setup() {
+      return () => h(
+        Button,
+        {
+          onClick() {
+            setCount(count + 1);
+          }
+        },
+        () => `Clicked ${count} times`
+      )
+    }
+  }), [count])
+
+  return <>
+    <Snapshot.From
+      render={inject => {
+        return <VueWrap app={btn} {...inject} />
+      }}
+    />
+    <Snapshot.To />
+    <Snapshot.To dependencies={[count]} />
+  </>
+}
+
+</script>
+<template>
+  <ReactWrap :app="app" />
+</template>
+```
+
+::: 

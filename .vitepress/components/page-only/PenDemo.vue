@@ -1,26 +1,27 @@
 <script setup lang="tsx">
 import React from 'react';
-import { h } from 'vue';
+import { h, ref } from 'vue';
 import VpButton from '../Button.vue';
 import ReactWrap from '../ReactWrap.vue';
 import VueWrap from '../VueWrap';
 import { useMemo } from 'react';
 
-const App: React.FC = () => {
-  const [count, setCount] = React.useState(0);
+const app: React.FC = () => {
+  const btn = useMemo(() => ({
 
-  const vueApp = useMemo(() => ({
     setup() {
+      const count = ref(0);
+
       return () => h(
         VpButton,
-        { onClick: () => setCount(count + 1) },
-        () => `点我：${count}`
+        { onClick: () => count.value += 1 },
+        () => `点我：${count.value}`
       )
     }
-  }), [count])
+  }), [])
 
   return <VueWrap
-    App={vueApp}
+    app={btn}
     style={{
       display: 'inline-block',
     }}
@@ -29,5 +30,5 @@ const App: React.FC = () => {
 
 </script>
 <template>
-  <ReactWrap :App="App" :style="{ 'display': 'inline-block', 'border': '1px solid #d5d5d5' }" />
+  <ReactWrap :app="app" :style="{ 'display': 'inline-block', 'border': '1px solid #d5d5d5' }" />
 </template>

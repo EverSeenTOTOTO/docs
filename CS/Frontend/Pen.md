@@ -24,20 +24,21 @@ import { inject, onMounted, ref } from 'vue';
 import { ReactWrapContext } from './context';
 
 const vpData = inject<VitePressData>(dataSymbol);
-const { App } = defineProps(["App"]);
+const props = defineProps(["app"]);
 const container = ref<HTMLElement | null>(null);
 
 onMounted(() => {
   const root = ReactDom.createRoot(
     container.value!,
   );
+  const App = props.app;
 
   if (typeof App !== 'function') {
     throw new Error('render function is required');
   }
 
   root.render(
-    <ReactWrapContext.Provider value={{ vpData: vpData }}>
+    <ReactWrapContext.Provider value={{ vpData }}>
       <App />
     </ReactWrapContext.Provider>
   );
@@ -50,28 +51,29 @@ onMounted(() => {
 ```
 
 ```tsx [VueWrap]
-import React, { useContext, useEffect, useRef } from 'react'
-import { dataSymbol } from 'vitepress/dist/client/app/data.js'
-import { createApp } from 'vue'
-import { ReactWrapContext } from './context'
+import React, { HTMLAttributes, useContext, useEffect, useImperativeHandle, useRef } from "react";
+import { dataSymbol } from "vitepress/dist/client/app/data.js";
+import { Component, createApp } from "vue";
+import { ReactWrapContext } from "./context";
 
-export default ({ App, ...rest }) => {
+export default React.forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { app: Component }>(({ app: propsApp, ...rest }, forwardRef) => {
   const { vpData } = useContext(ReactWrapContext);
-  const container = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(forwardRef, () => ref.current!);
 
   useEffect(() => {
-    const app = createApp(App);
+    const app = createApp(propsApp);
 
-    app.provide(dataSymbol, vpData)
-    app.mount(container.current!)
-
+    app.provide(dataSymbol, vpData);
+    app.mount(ref.current!);
     return () => {
       app.unmount();
-    }
-  }, [vpData, App])
+    };
+  }, [vpData, propsApp]);
 
-  return <div ref={container} {...rest} />
-}
+  return <div ref={ref} {...rest} />;
+});
 ```
 :::
 
@@ -81,27 +83,27 @@ export default ({ App, ...rest }) => {
 ```vue
 <script setup lang="tsx">
 import React from 'react';
-import { h } from 'vue';
+import { h, ref } from 'vue';
 import VpButton from '../Button.vue';
 import ReactWrap from '../ReactWrap.vue';
 import VueWrap from '../VueWrap';
 import { useMemo } from 'react';
 
-const App: React.FC = () => {
-  const [count, setCount] = React.useState(0);
-
-  const vueApp = useMemo(() => ({
+const app: React.FC = () => {
+  const btn = useMemo(() => ({
     setup() {
+      const count = ref(0);
+
       return () => h(
         VpButton,
-        { onClick: () => setCount(count + 1) },
-        () => `点我：${count}`
+        { onClick: () => count.value += 1 },
+        () => `点我：${count.value}`
       )
     }
-  }), [count])
+  }), [])
 
   return <VueWrap
-    App={vueApp}
+    app={btn}
     style={{
       display: 'inline-block',
     }}
@@ -110,7 +112,7 @@ const App: React.FC = () => {
 
 </script>
 <template>
-  <ReactWrap :App="App" :style="{ 'display': 'inline-block', 'border': '1px solid #d5d5d5' }" />
+  <ReactWrap :app="app" :style="{ 'display': 'inline-block', 'border': '1px solid #d5d5d5' }" />
 </template>
 ```
 

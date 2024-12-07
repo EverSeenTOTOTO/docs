@@ -7,20 +7,21 @@ import { inject, onMounted, ref } from 'vue';
 import { ReactWrapContext } from './context';
 
 const vpData = inject<VitePressData>(dataSymbol);
-const { App } = defineProps(["App"]);
+const props = defineProps(["app"]);
 const container = ref<HTMLElement | null>(null);
 
 onMounted(() => {
   const root = ReactDom.createRoot(
     container.value!,
   );
+  const App = props.app;
 
   if (typeof App !== 'function') {
     throw new Error('render function is required');
   }
 
   root.render(
-    <ReactWrapContext.Provider value={{ vpData: vpData }}>
+    <ReactWrapContext.Provider value={{ vpData }}>
       <App />
     </ReactWrapContext.Provider>
   );
