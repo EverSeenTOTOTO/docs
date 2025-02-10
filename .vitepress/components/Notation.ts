@@ -37,7 +37,7 @@ const Notation: Component = {
       },
       box: {
         type: 'box',
-        color: isDark.value ? '#a42c2c' : '#b71c1c'
+        color: isDark.value ? '#1447cf' : '#1447cf'
       },
       circle: {
         type: 'circle',
