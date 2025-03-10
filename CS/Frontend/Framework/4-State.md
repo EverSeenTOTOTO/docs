@@ -19,13 +19,13 @@ const App = () => div([
 render(h(App), document.body);
 ```
 
-我们说注释很重要很重要，因为它引出了响应性话题：我们需要手动绑定状态改变后的重绘逻辑，这正是jQuery被淘汰的原因。该例子中只要在按钮按下后更新状态还好，假如还有`<input>`标签呢？我们不仅要在状态改变时更改输入框里面的值，还要在用户输入后将输入变化同步给应用状态，即所谓的“<Notation type="circle">双向绑定</Notation>”。一个两个元素都需要手动绑定一组状态更新逻辑，应用复杂之后根本顶不住，稍有疏忽就会产生BUG。因此React和Vue最大的贡献是实现了响应性，我们只需要关注状态变更，由框架完成重绘或同步UI状态给应用状态的操作。
+上篇说`onClick`里的注释很重要很重要，因为它引出了响应性话题：我们需要手动触发状态改变后的重绘逻辑，这正是jQuery被淘汰的原因。该例子中只要在按钮按下后更新状态还好，假如还有`<input>`标签呢？我们不仅要在状态改变时更改输入框里面的值，还要在用户输入后将输入变化同步给应用状态，即所谓的“<Notation type="circle">双向绑定</Notation>”。一个两个元素都需要手动绑定一组状态更新逻辑，应用复杂之后根本顶不住，稍有疏忽就会产生BUG。因此React和Vue在我心里最大的贡献是实现了响应性，开发者只需要关注状态变更，由框架完成重绘或同步UI状态给应用状态的操作。
 
 ## React
 
 ### useState
 
-到目前为止，我们所谓的重绘是将组件函数重新执行了一遍，这建立在组件函数都是纯函数的假设之上，同时框架内部有VDOM缓存，通过比对新旧状态触发Diff Patch，这是典型的React模式。该用例不能自动触发重绘的根源在于：`onClick`里面修改`state`的动作**对框架来说是不可感知的**。还记得我们前面提到的class的坏处吗？`state`是一个数据结构，`render`是操作这个数据结构的一段逻辑，那么`onClick`中`state.count += 1`就是绕过了类设计者的心理预期，“偷偷摸摸”修改状态的行为，下面是便于理解的伪码：
+到目前为止，我们所谓的重绘是将组件函数重新执行了一遍，这建立在组件函数都是纯函数的假设之上，同时框架内部有VDOM缓存，通过比对新旧状态触发Diff Patch，这是典型的React模式。该用例不能自动触发重绘的根源在于：`onClick`里面修改`state`的动作**对框架来说不可感知**。还记得我们前面提到的class的坏处吗？`state`是一个数据结构，`render`是操作这个数据结构的一段逻辑，那么`onClick`中`state.count += 1`就是绕过了类设计者的心理预期，“偷偷摸摸”修改状态的行为，下面是便于理解的伪码：
 
 ```ts
 class AnonymousClass {
@@ -144,33 +144,23 @@ const Foo = () => {
 显而易见，这又是一个应该由框架封装的能力，我们将副作用用一个函数包裹，并告知框架在哪些状态变化时才执行之。理解这一点之后，在刚刚绕过`React.useState`的基础上，我们也可以“淘汰”`React.useEffect`自己实现一个低配版：
 
 ```ts
-let memo: unknown;
-+ const changedStates: unknown[] = [];
-
-export function useState<T>(init: T): [T, (value: T) => void] {
-  const setState = (state: T) => {
-    if (memo !== state) {
-      memo = state;
-      changedStates.push(memo); // collect changed states // [!code ++]
-      root.render(<App />);     // trigger rerender 
-    }
-  };
-
-  if (!memo) setState(init);
-
-  return [memo as T, setState];
-}
-```
-
-```ts
 let initOrClear: (() => void) | boolean = false; // 一个清理副作用的函数或者表示已初始化的true
+let lastDeps: unknown[] = [];
+
+const diffDeps = (oldDeps: unknown[], newDeps:unknown[]) => {
+  for (let i = 0; i < oldDeps.length; ++i) {
+    if (oldDeps[i] !== newDeps[i]) return true;
+  }
+
+  return false;
+};
 
 export function useEffect<T>(effect: () => void | (() => void), deps: Array<T>): void {
-  if (!initOrClear || deps.find((dep) => changedStates.includes(dep))) { // if any deps has changed
+  if (!initOrClear || diffDeps(lastDeps, deps)) { // if any deps has changed
     if (typeof initOrClear === 'function') initOrClear();
 
     initOrClear = effect() ?? true;
-    changedStates.splice(0, changedStates.length);
+    lastDeps = deps;
   }
 }
 
@@ -192,7 +182,7 @@ const App = () => {
 
 `useState`和`useEffect`可以作为很多其他Hooks实现的基石。现在我们要做的，就是汇总以上知识，在自己的微型React框架中实现真正可复用的Hooks，而不是上面的一次性“青春版”。
 
-实现的难点其实是怎么封装“青春版”Hooks用到的那些全局变量，比如`memo`和`initOrClear`，因为我们不知道用户会调用多少次Hook，不可能预先准备足够的全局变量。那用数据结构吧，因为有一个查找旧状态进行比对的过程，首先想到哈希表，但是用什么作为键呢？我最初的想法是直接`WeakMap`用状态作为键，值代表状态是否`dirty`，很快意识到思路不对，例如`useState([])`，别忘了组件函数每次都会重新执行，所以每次都会创建一个新的`[]`，和上次的`[]`不是一个东西。而且我一开始并没有想到将状态存在组件VNode上，反而想偷懒，用一个全局状态存储，每一项代表一个Hook创建的状态，那么每一项都需要和其所在的组件关联起来，`useEffect`的实现也变复杂了。尝试了各种方法都不太对劲，最后翻了一下Preact的源码才恍然大悟：<Notation>将状态存在组件上，设置两个全局变量`currentComponent`和`currentHookId`，每次组件函数执行之前将`currentComponent`设置为该组件，将`currentHookId`置`0`，这样组件内部调用Hook时就能通过`currentComponent`拿到当前组件，通过`currentHookId`拿到Hook所创建状态的编号并作为哈希表的键</Notation>，这很好地解释了：
+实现的难点在于怎么封装“青春版”Hooks用到的那些全局变量，比如`memo`和`initOrClear`，因为我们不知道用户会调用多少次Hook，不可能预先准备足够的全局变量。那用数据结构吧，因为有一个查找旧状态进行比对的过程，首先想到哈希表，但是用什么作为键呢？我最初的想法是直接`WeakMap`用状态作为键，值代表状态是否`dirty`，很快意识到思路不对，例如`useState([])`，别忘了组件函数每次都会重新执行，所以每次都会创建一个新的`[]`，和上次的`[]`不是一个东西。而且我一开始并没有想到将状态存在组件VNode上，反而想偷懒，用一个全局状态存储，每一项代表一个Hook创建的状态，那么每一项都需要和其所在的组件关联起来，`useEffect`的实现也变复杂了。尝试了各种方法都不太对劲，最后翻了一下Preact的源码才恍然大悟：<Notation>将状态存在组件上，设置两个全局变量`currentComponent`和`currentHookId`，每次组件函数执行之前将`currentComponent`设置为该组件，将`currentHookId`置`0`，这样组件内部调用Hook时就能通过`currentComponent`拿到当前组件，通过`currentHookId`拿到Hook所创建状态的编号并作为哈希表的键</Notation>，这很好地解释了：
 
 1. React要求Hooks只能在组件内部执行，否则拿不到`currentComponent`；
 2. React要求Hooks不能放置在分支语句下面，必须是函数体top level，因为走不同分支可能导致`currentHookId`错位。
@@ -236,7 +226,7 @@ export const h = (component: (state: unknown) => VNode, state?: unknown) => {
 
 ## Vue
 
-class组件将一个数据结构和它相关的逻辑内聚在一起本意是好的，响应式的问题其实只是我们按照符合自己思维模式的方式`this.state.count += 1`改变状态的时候，框架不知道我们做了这样的改变。如果，我是说如果，有一个框架能够让我们以这种更自然的方式编写代码，一个状态更新了，那么所有关联的状态和副作用都自动更新或触发，不需要手动声明依赖关系，你会更青睐这个框架吗？
+class组件将一个数据结构和它相关的逻辑内聚在一起本意是好的，响应式的问题只是我们按照符合自己思维模式的方式`this.state.count += 1`改变状态的时候，框架不知道我们做了这样的改变。如果，我是说如果，有一个框架能够让我们以这种更自然的方式编写代码，一个状态更新了，那么所有关联的状态和副作用都自动更新或触发，不需要手动声明依赖关系，你会更青睐这个框架吗？
 
 没错，这样的框架是存在的，它就是<Notation type="cross">Svelte</Notation> <Notation type="cross">Mobx</Notation> <Notation type="cross">Valtio</Notation> Vue。实现这个机制的关键在于两个设计模式：**代理模式和观察者模式**。如果说React是对人们修改状态的方法做了限制（`setState`），那么Vue就是对我们初始化状态的方法做了限制（`ref`）。我们使用框架API初始化状态之后拿到的其实是一个代理对象，而这个代理本身又是一个被观察的目标，当它改变时，会主动推送更改至所有观察者。由于初始化只要做一次，心智负担通常轻很多。
 
@@ -321,7 +311,7 @@ const counter = {
 
 ```ts
 class Counter {
-  state = { vue hook states },
+  state = { vue hooks },
   render = () => {
     react hooks;
 
