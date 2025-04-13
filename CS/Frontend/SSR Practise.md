@@ -194,6 +194,10 @@ app.mount(document.getElementById('root'));
 
 2.  使用构建工具提供的服务器，在原有`clientApp`开发服务器的基础上，放弃`server`的HMR，仅考虑`serverApp`。我们可以借助构建工具的配置选项，将构建后memfs中的`serverApp`以中间件的形式注入到开发服务器中，在webpack\@5中可用的配置选项有`devServer.setupMiddleware`，在vite中是`vite.middleware.use`。这种方案的优势是较为简单，并且适合迁移已有的配置，在模板应用中我采用的就是这种方案；其缺点自然是不便调试`server`代码。
 
+::: warning
+Edit in 2025 Apr: 实践证明，方案2所述的设计并不好，因为不方便在两个服务器之间同步会话状态，比如cookie数据。不过，得益于Vite的演进，现在从2这种设计改造成1的架构也并不复杂，你可以参考我的这个[项目](https://github.com/EverSeenTOTOTO/langvis/blob/main/src/server/middleware/ssr.ts)。
+:::
+
     ```js
     const createDevSSRMiddleware = (devServer) => (req, res) => {
         const ofs = devServer.compiler.outputFileSystem;
