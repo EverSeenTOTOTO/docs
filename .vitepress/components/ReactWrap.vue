@@ -1,5 +1,4 @@
 <script setup lang="tsx">
-import React from 'react';
 import ReactDom from 'react-dom/client';
 import { VitePressData } from 'vitepress';
 import { dataSymbol } from 'vitepress/dist/client/app/data.js';

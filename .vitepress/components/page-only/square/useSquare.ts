@@ -2,7 +2,7 @@ import { Terminal } from '@xterm/xterm';
 import type { CodeJar } from 'codejar';
 import { ref, Ref } from 'vue';
 // @ts-ignore
-import init from '../square.wasm?init';
+import init from '../../../square.wasm?init';
 
 const utf8Decoder = new TextDecoder('utf-8');
 const readUtf8String = (buffer: ArrayBuffer, offset: number, length: number) => {

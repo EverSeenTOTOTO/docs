@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { onMounted, onUpdated, computed, watch, ref, nextTick } from 'vue';
-import { useSquare, INITIAL_CODE } from '../hooks/useSquare';
-import type { CodeJar } from 'codejar';
-import * as xterm from '@xterm/xterm';
+import VpButton from '@vp/Button.vue';
 import { useScrollLock } from '@vueuse/core';
+import * as xterm from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
-import { onScrollEnd } from '../hooks/useScrollEnd';
-import VpButton from './Button.vue';
+import type { CodeJar } from 'codejar';
+import { computed, nextTick, onMounted, onUpdated, ref, watch } from 'vue';
+import { onScrollEnd } from '../../../hooks/useScrollEnd';
+import { INITIAL_CODE, useSquare } from './useSquare';
 
-import { useData } from 'vitepress'
+import { useData } from 'vitepress';
 
 const { isDark } = useData()
 

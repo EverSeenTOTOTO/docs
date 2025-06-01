@@ -23,9 +23,7 @@ const bits = reactive(Array.from({ length: SIZE * SIZE }, () => false));
 const generation = ref(0);
 const alive = computed(() => bits.filter(Boolean).length);
 
-
 const toggleBit = (index: number) => bits.splice(index, 1, !bits[index]);
-
 
 const tick = () => {
   if (alive.value === 0) return;
@@ -111,14 +109,16 @@ const handlePointerUp = () => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+
+  --itemWidth: 10px;
 }
 
 .container {
   display: grid;
   grid-template-columns: repeat(var(--size), 1fr);
   grid-template-rows: repeat(var(--size), 1fr);
-  width: calc(var(--size) * 10px);
-  height: calc(var(--size) * 10px);
+  width: calc(var(--size) * var(--itemWidth));
+  height: calc(var(--size) * var(--itemWidth));
   border-inline-end: 1px solid var(--bg);
   border-block-end: 1px solid var(--bg);
 }
@@ -143,7 +143,7 @@ const handlePointerUp = () => {
 .operation {
   display: flex;
   flex-wrap: wrap;
-  min-width: calc(var(--size) * 10px);
+  min-width: calc(var(--size) * var(--itemWidth));
   margin-block: 24px 12px;
 
   &>span {

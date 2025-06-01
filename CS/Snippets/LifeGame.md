@@ -132,14 +132,15 @@ const handlePointerUp = () => {
   flex-direction: column;
   align-items: flex-start;
 
+  --itemWidth: 10px;
 }
 
 .container {
   display: grid;
   grid-template-columns: repeat(var(--size), 1fr);
   grid-template-rows: repeat(var(--size), 1fr);
-  width: calc(var(--size) * 10px);
-  height: calc(var(--size) * 10px);
+  width: calc(var(--size) * var(--itemWidth));
+  height: calc(var(--size) * var(--itemWidth));
   border-inline-end: 1px solid var(--bg);
   border-block-end: 1px solid var(--bg);
 }
@@ -164,24 +165,11 @@ const handlePointerUp = () => {
 .operation {
   display: flex;
   flex-wrap: wrap;
-  min-width: calc(var(--size) * 10px);
+  min-width: calc(var(--size) * var(--itemWidth));
   margin-block: 24px 12px;
 
   &>span {
     flex: 0 0 25%;
-  }
-
-  >button {
-    padding-inline: 6px;
-    border-radius: 3px;
-
-    &:active {
-      opacity: 0.6;
-    }
-
-    &:hover {
-      background-color: var(--btnBg);
-    }
   }
 }
 
@@ -202,5 +190,4 @@ const handlePointerUp = () => {
   }
 }
 </style>
-```
 :::

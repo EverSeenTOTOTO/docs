@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, withDefaults } from 'vue';
+import { ref, } from 'vue';
 import ImageView from './ImageView.vue';
 
 const target = ref<HTMLUListElement>();
@@ -38,9 +38,7 @@ export type ImageGalleryProps = {
   items: { src: string, desc: string }[]
 }
 
-const { items } = withDefaults(defineProps<ImageGalleryProps>(), {
-  items: () => []
-})
+const { items = [] } = defineProps<ImageGalleryProps>();
 
 </script>
 <template>

@@ -1,5 +1,5 @@
 <script setup>
-import SquarePlayground from '@vp/SquarePlayground.vue'
+import SquarePlayground from '@vp/page-only/square/index.vue'
 </script>
 
 # Square <Badge type="warning" text="WIP" />

@@ -4,13 +4,13 @@ lint:
 
 .PHONY: build
 build:
-	pnpm run docs:build
+	bun run docs:build
 	tar -cvzf vp.tar.gz .vitepress
 
 .PHONY: dev
 dev:
-	pnpm run docs:dev
+	bun run docs:dev
 
 .PHONY: start
 start: build
-	pnpm run docs:preview
+	bun run docs:preview
