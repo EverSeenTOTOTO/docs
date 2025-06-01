@@ -54,14 +54,14 @@ const {
 type Modes = keyof typeof modes;
 
 const mode = ref<Modes>('dfs');
-const { state, play, pause, reset, canPlay, canPause } = modes[mode.value];
+const traverse = computed(() => modes[mode.value]);
 
 const MODE_OPTIONS = Object.keys(modes).map(key => ({
   label: key,
   value: key
 }));
 
-const isIdle = computed(() => state.value !== 'idle');
+const isIdle = computed(() => traverse.value.state.value !== 'idle');
 
 const createItemClass = (i: number) => ({
   'item--wall': isWall(i),
@@ -94,9 +94,9 @@ const createItemClass = (i: number) => ({
 
       <vp-select :style="{ marginInlineStart: 'auto' }" :disabled="isIdle" :value="mode"
         @change="e => mode = e.target.value" :options="MODE_OPTIONS" />
-      <vp-button :disabled="!canPlay" @click="play">开始</vp-button>
-      <vp-button :disabled="!canPause" @click="pause">暂停</vp-button>
-      <vp-button @click="reset">重置</vp-button>
+      <vp-button :disabled="!traverse.canPlay" @click="traverse.play">开始</vp-button>
+      <vp-button :disabled="!traverse.canPause" @click="traverse.pause">暂停</vp-button>
+      <vp-button @click="traverse.reset">重置</vp-button>
     </div>
     <div class="container">
       <div v-for="(int, index) in ints" class="item" :class="createItemClass(int)"
