@@ -60,15 +60,15 @@ const tick = () => {
   generation.value++;
 }
 
-const { pause, play } = useStep(tick);
-
-const reset = () => {
-  pause();
-  generation.value = 0;
-  for (let i = 0; i < bits.length; i++) {
-    bits[i] = false;
+const { pause, play, reset } = useStep({
+  onStep: tick,
+  onReset() {
+    generation.value = 0;
+    for (let i = 0; i < bits.length; i++) {
+      bits[i] = false;
+    }
   }
-}
+});
 
 const pressed = ref(false);
 const updated = new Map<number, boolean>();

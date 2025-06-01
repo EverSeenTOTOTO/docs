@@ -9,3 +9,4 @@ import Maze from '@vp/page-only/maze/index.vue'
 ## 基础版
 
 <Maze />
+

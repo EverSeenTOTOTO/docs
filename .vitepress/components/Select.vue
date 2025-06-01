@@ -18,7 +18,8 @@ const { value, options = [] } = defineProps<VpSelectProps>();
 </script>
 
 <template>
-  <select ref="select" class="vp-select" :value="value" @change="$emit('change', $event)" v-bind="$attrs">
+  <select ref="select" class="vp-select" :class="{ 'vp-select--disabled': $attrs.disabled }" :value="value"
+    @change="$emit('change', $event)" v-bind="$attrs">
     <option v-for="{ label, value } in options" :key="value" :value="value">
       {{ label }}
     </option>
@@ -28,7 +29,6 @@ const { value, options = [] } = defineProps<VpSelectProps>();
 .vp-select {
   padding-inline: 8px;
   border-radius: 3px;
-  min-width: 120px;
   border: 1px solid transparent;
   cursor: pointer;
   font-size: 14px;
@@ -42,6 +42,14 @@ const { value, options = [] } = defineProps<VpSelectProps>();
 
   option {
     font-size: 14px;
+  }
+}
+
+.vp-select--disabled {
+  cursor: not-allowed;
+
+  &:hover {
+    border: 1px solid #d9d9d9;
   }
 }
 </style>

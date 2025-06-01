@@ -16,7 +16,8 @@ const bg = computed(() => isDark.value ? '#2a8148' : '#c6f1d5');
 </script>
 
 <template>
-  <input ref="input" class="vp-input" :style="{ '--bg': bg }" v-bind="$attrs" />
+  <input ref="input" class="vp-input" :class="{ 'vp-input--disabled': $attrs.disabled }" :style="{ '--bg': bg }"
+    v-bind="$attrs" />
 </template>
 <style scoped>
 .vp-input {
@@ -28,6 +29,15 @@ const bg = computed(() => isDark.value ? '#2a8148' : '#c6f1d5');
 
   &:hover {
     border: 1px solid var(--vp-c-text-1);
+  }
+}
+
+.vp-input--disabled {
+  color: var(--vp-c-text-3);
+  cursor: not-allowed;
+
+  &:hover {
+    border: 1px solid var(--vp-c-danger-soft);
   }
 }
 </style>

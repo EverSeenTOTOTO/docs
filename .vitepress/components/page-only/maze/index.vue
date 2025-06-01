@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useData } from 'vitepress';
-import { computed } from 'vue';
-import { useStep } from '../../../hooks/useStep';
+import { computed, ref, watch } from 'vue';
 import VpButton from '../../Button.vue';
 import VpInput from '../../Input.vue';
 import VpSelect from '../../Select.vue';
@@ -15,12 +14,16 @@ const colors = computed(() => isDark.value
     fg: 'rgba(0,0,0,0.45)',
     startBg: '#e45f5f',
     endBg: '#5fe45f',
+    pathBg: '#aaaa2e',
+    carBg: '#73b0ee'
   }
   : {
     bg: 'rgba(0,0,0,0.45)',
     fg: 'rgba(255,255,255,0.45)',
     startBg: '#d72222',
     endBg: '#55bb30',
+    pathBg: '#e4e45f',
+    carBg: '#73b0ee'
   });
 
 const {
@@ -44,7 +47,21 @@ const {
   handlePointerUp,
   handlePointerDown,
   handlePointerMove,
+
+  modes,
 } = useMaze();
+
+type Modes = keyof typeof modes;
+
+const mode = ref<Modes>('dfs');
+const { state, play, pause, reset, canPlay, canPause } = modes[mode.value];
+
+const MODE_OPTIONS = Object.keys(modes).map(key => ({
+  label: key,
+  value: key
+}));
+
+const isIdle = computed(() => state.value !== 'idle');
 
 const createItemClass = (i: number) => ({
   'item--wall': isWall(i),
@@ -54,36 +71,37 @@ const createItemClass = (i: number) => ({
   'item--end': isEnd(i),
 })
 
-const { play, pause } = useStep(console.log);
-const start = () => { };
-const reset = () => { };
-
 </script>
 
 <template>
   <div class="game"
-    :style="{ '--size': SIZE, '--bg': colors.bg, '--fg': colors.fg, '--start-bg': colors.startBg, '--end-bg': colors.endBg }">
+    :style="{ '--size': SIZE, '--bg': colors.bg, '--fg': colors.fg, '--start-bg': colors.startBg, '--end-bg': colors.endBg, '--path-bg': colors.pathBg, '--car-bg': colors.carBg }">
     <div class="operation">
       <label for="typeSelect">迷宫形状：</label>
-      <vp-select id="typeSelect" :value="mazeType" @change="e => mazeType = e.target.value"
+      <vp-select id="typeSelect" :disabled="isIdle" :value="mazeType" @change="e => mazeType = e.target.value"
         :options="MAZE_OPTIONS"></vp-select>
 
       <!-- random config -->
-      <vp-input id="denseInput" v-if="mazeType === 'random'" placeholder="密度" type="number" :value="dense" min="0"
-        max="1" step="0.01" @change="e => dense = Math.max(Math.min(0.99, parseFloat(e.target.value)), 0)" />
-      <vp-button v-if="mazeType === 'random'" @click="generateRandomMaze">重新生成</vp-button>
+      <vp-input id="denseInput" v-if="mazeType === 'random'" placeholder="密度" type="number" :disabled="isIdle"
+        :value="dense" min="0" max="1" step="0.01"
+        @change="e => dense = Math.max(Math.min(0.99, parseFloat(e.target.value)), 0)" />
+      <vp-button v-if="mazeType === 'random'" :disabled="isIdle" @click="generateRandomMaze">重新生成</vp-button>
 
       <!-- custom config -->
       <label v-if="mazeType === 'custom'" for="placeSelect">放置：</label>
-      <vp-select id="placeSelect" v-if="mazeType === 'custom'" :value="placeType"
+      <vp-select id="placeSelect" v-if="mazeType === 'custom'" :disabled="isIdle" :value="placeType"
         @change="e => placeType = e.target.value" :options="PLACE_OPTIONS"></vp-select>
 
-      <vp-button :style="{ marginInlineStart: 'auto' }" @click="start">开始</vp-button>
+      <vp-select :style="{ marginInlineStart: 'auto' }" :disabled="isIdle" :value="mode"
+        @change="e => mode = e.target.value" :options="MODE_OPTIONS" />
+      <vp-button :disabled="!canPlay" @click="play">开始</vp-button>
+      <vp-button :disabled="!canPause" @click="pause">暂停</vp-button>
       <vp-button @click="reset">重置</vp-button>
     </div>
     <div class="container">
       <div v-for="(int, index) in ints" class="item" :class="createItemClass(int)"
-        @pointerdown="handlePointerDown(index)" @pointerup="handlePointerUp" @pointermove="handlePointerMove(index)" />
+        @pointerdown="handlePointerDown(index)" @pointerup="handlePointerUp" @pointermove="handlePointerMove(index)"
+        @click="console.log(index, int)" />
     </div>
   </div>
 </template>
@@ -129,6 +147,14 @@ const reset = () => { };
 
 .item--end {
   background-color: var(--end-bg);
+}
+
+.item--path {
+  background-color: var(--path-bg);
+}
+
+.item--car {
+  background-color: var(--car-bg);
 }
 
 .operation {
