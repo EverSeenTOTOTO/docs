@@ -202,8 +202,8 @@ const useMazeType = ({ ints, backup, SIZE, LENGTH, HALF_SIZE }) => {
       end = Math.floor(Math.random() * LENGTH);
     }
     endPos.value = end;
-    ints[startPos.value] = 4;
-    ints[endPos.value] = 5;
+    ints[startPos.value] = START;
+    ints[endPos.value] = END;
 
     backup.value.splice(0, backup.value.length, ...ints);
   }

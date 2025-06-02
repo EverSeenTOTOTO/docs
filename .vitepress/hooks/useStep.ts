@@ -49,7 +49,7 @@ export const useStep = ({
     interval.value = null;
   }
   const finish = async () => {
-    if (!canFinish) return;
+    if (!canFinish.value) return;
     await onFinish?.();
     clearInterval(interval.value!);
     state.value = 'done';
