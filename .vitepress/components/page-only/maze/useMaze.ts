@@ -3,15 +3,16 @@ import { reactive, ref, shallowRef, watch } from 'vue';
 import { useStep } from '../../../hooks/useStep';
 import { VpSelectProps } from '../../Select.vue';
 
-const isBlank = (i: number) => i === 0;
-const isWall = (i: number) => i === 1;
-const isCar = (i: number) => i === 2;
-const isPath = (i: number) => i === 3;
-const isStart = (i: number) => i === 4;
-const isEnd = (i: number) => i === 5;
-const canPass = (i: number) => isStart(i) || isBlank(i) || isEnd(i);
+export const BLANK = 0;
+export const WALL = 1;
+export const CAR = 2;
+export const PATH = 3;
+export const START = 4;
+export const END = 5;
 
-const findAccessibleNeighbors = (index, { ints, SIZE, LENGTH }) => {
+const canPass = (i: number) => i === START || i === END || i === BLANK;
+
+const getNeighbors = (index: number, { SIZE, LENGTH }) => {
   return [
     // top
     index > SIZE && index - SIZE,
@@ -23,57 +24,61 @@ const findAccessibleNeighbors = (index, { ints, SIZE, LENGTH }) => {
     (index + 1) % SIZE > 0 && index + 1,
   ]
     .filter(Boolean)
-    .filter((neighbor) =>
-      neighbor >= 0 &&
-      neighbor < SIZE * SIZE &&
-      canPass(ints[neighbor])
-    );
+    .filter((neighbor) => neighbor >= 0 && neighbor < LENGTH);
+}
+
+const findAccessibleNeighbors = (index: number, { ints, SIZE, LENGTH }) => {
+  return getNeighbors(index, { SIZE, LENGTH }).filter((neighbor) => canPass(ints[neighbor]));
 }
 
 const useCustomMaze = ({ mazeType, backup, ints, startPos, endPos }) => {
-  const placeType = ref('1');
+  const disableCustom = ref(false);
+  const placeType = ref(String(WALL));
 
   const PLACE_OPTIONS: VpSelectProps['options'] = [
     {
       label: '墙',
-      value: '1'
+      value: String(WALL)
     },
     {
       label: '空',
-      value: '0'
+      value: String(BLANK)
     },
     {
       label: '起点',
-      value: '4'
+      value: String(START)
     },
     {
       label: '终点',
-      value: '5'
+      value: String(END)
     }
   ]
 
   const pressed = ref(false);
   const updated = new Map<number, boolean>();
   const handlePointerDown = (index: number) => {
-    if (mazeType.value !== 'custom') return;
+    if (mazeType.value !== 'custom' || disableCustom.value) return;
 
     pressed.value = true;
     updated.set(index, true);
 
     const type = Number(placeType.value);
 
-    if (isStart(type)) {
-      if (isEnd(ints[index])) return;
-      ints[startPos.value] = 0; // reset old
+    if (type === START) {
+      if (ints[index] === END) return;
+
+      ints[startPos.value] = BLANK; // reset old
       startPos.value = index;
-      ints[startPos.value] = 4; // set new
-    } else if (isEnd(type)) {
-      if (isStart(ints[index])) return;
-      ints[endPos.value] = 0;
+      ints[startPos.value] = START; // set new
+    } else if (type === END) {
+      if (ints[index] === START) return;
+
+      ints[endPos.value] = BLANK;
       endPos.value = index;
-      ints[endPos.value] = 5;
+      ints[endPos.value] = END;
     } else {
-      if (isStart(ints[index]) || isEnd(ints[index])) return;
+      if (ints[index] === START || ints[index] === END) return;
+
       ints[index] = type;
     }
 
@@ -83,8 +88,8 @@ const useCustomMaze = ({ mazeType, backup, ints, startPos, endPos }) => {
   const handlePointerMove = (index: number) => {
     const type = Number(placeType.value);
 
-    if (mazeType.value !== 'custom' || isStart(type) || isEnd(type)) return;
-    if (isStart(ints[index]) || isEnd(ints[index])) return;
+    if (mazeType.value !== 'custom' || disableCustom.value || type === START || type === END) return;
+    if (ints[index] === START || ints[index] === END) return;
     if (!pressed.value || updated.get(index)) return;
 
     ints[index] = type;
@@ -93,7 +98,7 @@ const useCustomMaze = ({ mazeType, backup, ints, startPos, endPos }) => {
   }
 
   const handlePointerUp = () => {
-    if (mazeType.value !== 'custom') return;
+    if (mazeType.value !== 'custom' || disableCustom.value) return;
     pressed.value = false;
     updated.clear();
   }
@@ -101,6 +106,8 @@ const useCustomMaze = ({ mazeType, backup, ints, startPos, endPos }) => {
   return {
     placeType,
     PLACE_OPTIONS,
+
+    disableCustom,
 
     handlePointerDown,
     handlePointerUp,
@@ -135,8 +142,8 @@ const useMazeType = ({ ints, backup, SIZE, LENGTH, HALF_SIZE }) => {
   const generateBorderMaze = () => {
     startPos.value = 0;
     endPos.value = LENGTH - 1;
-    ints[startPos.value] = 4;
-    ints[endPos.value] = 5;
+    ints[startPos.value] = START;
+    ints[endPos.value] = END;
 
     backup.value.splice(0, backup.value.length, ...ints);
   }
@@ -145,12 +152,12 @@ const useMazeType = ({ ints, backup, SIZE, LENGTH, HALF_SIZE }) => {
       if (row <= HALF_SIZE) {
         for (let col = row; col < SIZE - row; col++) {
           const index = row * SIZE + col;
-          ints[index] = 1; // wall
+          ints[index] = WALL; // wall
         }
       } else {
         for (let col = SIZE - row - 1; col <= row; col++) {
           const index = row * SIZE + col;
-          ints[index] = 1; // wall
+          ints[index] = WALL; // wall
         }
       }
     }
@@ -159,25 +166,25 @@ const useMazeType = ({ ints, backup, SIZE, LENGTH, HALF_SIZE }) => {
       if (col <= HALF_SIZE) {
         for (let row = col; row < SIZE - col; row++) {
           const index = row * SIZE + col;
-          ints[index] = 1; // wall
+          ints[index] = WALL; // wall
         }
       } else {
         for (let row = SIZE - col - 1; row <= col; row++) {
           const index = row * SIZE + col;
-          ints[index] = 1; // wall
+          ints[index] = WALL; // wall
         }
       }
     }
 
     for (let i = 2; i <= HALF_SIZE; i += 4) {
-      ints[SIZE * (SIZE - i) - i] = 0;
-      ints[SIZE * (i + 2) + i + 1] = 0;
+      ints[SIZE * (SIZE - i) - i] = BLANK;
+      ints[SIZE * (i + 2) + i + 1] = BLANK;
     }
 
     startPos.value = 0;
     endPos.value = SIZE * (SIZE - HALF_SIZE) - HALF_SIZE - 1
-    ints[startPos.value] = 4;
-    ints[endPos.value] = 5;
+    ints[startPos.value] = START;
+    ints[endPos.value] = END;
 
     backup.value.splice(0, backup.value.length, ...ints);
   }
@@ -192,7 +199,7 @@ const useMazeType = ({ ints, backup, SIZE, LENGTH, HALF_SIZE }) => {
     startPos.value = 0;
     let end: number | undefined = undefined;
     while (!end || !canPass(ints[end])) {
-      end = Math.floor(Math.random() * (LENGTH - 1));
+      end = Math.floor(Math.random() * LENGTH);
     }
     endPos.value = end;
     ints[startPos.value] = 4;
@@ -202,7 +209,7 @@ const useMazeType = ({ ints, backup, SIZE, LENGTH, HALF_SIZE }) => {
   }
 
   watch(mazeType, (newType) => {
-    ints.fill(0)
+    ints.fill(BLANK)
 
     switch (newType) {
       case 'square':
@@ -249,21 +256,21 @@ const useMazeRun = ({ ints, backup, SIZE, LENGTH, startPos, endPos }) => {
       carPos.value = startPos.value;
 
       const go = (target: number, fullPath: number[]) => stack.push(() => {
-        if (ints[target] === 3) return; // already visited
+        if (ints[target] === PATH) return; // already visited
 
-        ints[carPos.value] = 3; // mark visited
+        ints[carPos.value] = PATH; // mark visited
         fullPath.push(target);
         carPos.value = target;
 
         if (target === endPos.value) {
           const replay = (i: number) => {
-            ints[fullPath[i]] = 3; // mark path
+            ints[fullPath[i]] = PATH; // mark path
             if (i < fullPath.length - 1) return stack.push(() => replay(i + 1));
             dfs.finish();
           }
 
           // already reached end, so we can stop traverse, reset maze and replay the direct path
-          ints.splice(0, ints.length, ...backup.value); // reset maze
+          ints.splice(BLANK, ints.length, ...backup.value); // reset maze
           stack.splice(0, stack.length, () => replay(0));
           return;
         }
@@ -299,15 +306,15 @@ const useMazeRun = ({ ints, backup, SIZE, LENGTH, startPos, endPos }) => {
       carPos.value = startPos.value;
 
       const go = (target: number, fullPath: number[]) => stack.push(() => {
-        if (ints[target] === 3) return; // already visited
+        if (ints[target] === PATH) return; // already visited
 
-        ints[carPos.value] = 3; // mark visited
+        ints[carPos.value] = PATH; // mark visited
         fullPath.push(target);
         carPos.value = target;
 
         if (target === endPos.value) {
           const replay = (i: number) => {
-            ints[fullPath[i]] = 3; // mark path
+            ints[fullPath[i]] = PATH; // mark path
             if (i < fullPath.length - 1) return stack.push(() => replay(i + 1));
             bfs.finish();
           }
@@ -342,7 +349,6 @@ const useMazeRun = ({ ints, backup, SIZE, LENGTH, startPos, endPos }) => {
     }
   })
 
-
   return {
     modes: {
       dfs,
@@ -357,23 +363,16 @@ export const useMaze = () => {
   const SIZE = isSmallScreen.value ? 11 : 31; // grid cells
   const HALF_SIZE = Math.floor(SIZE / 2);
   const LENGTH = SIZE * SIZE;
-  const ints = reactive(Array.from({ length: LENGTH }, () => 0));
+  const ints = reactive(Array.from({ length: LENGTH }, () => BLANK));
   const backup = shallowRef<number[]>([]);
 
   const { startPos, endPos, ...typeConfig } = useMazeType({ ints, backup, SIZE, LENGTH, HALF_SIZE });
   const runConfig = useMazeRun({ ints, backup, SIZE, LENGTH, startPos, endPos });
 
-
   return {
     ints,
     SIZE,
 
-    isEmpty: isBlank,
-    isWall,
-    isCar,
-    isPath,
-    isStart,
-    isEnd,
     canPass,
 
     ...typeConfig,

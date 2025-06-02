@@ -4,7 +4,7 @@ import { computed, ref, watch } from 'vue';
 import VpButton from '../../Button.vue';
 import VpInput from '../../Input.vue';
 import VpSelect from '../../Select.vue';
-import { useMaze } from './useMaze';
+import { CAR, END, PATH, START, useMaze, WALL } from './useMaze';
 
 const { isDark } = useData()
 
@@ -30,12 +30,6 @@ const {
   ints,
   SIZE,
 
-  isWall,
-  isCar,
-  isPath,
-  isStart,
-  isEnd,
-
   mazeType,
   MAZE_OPTIONS,
 
@@ -44,6 +38,7 @@ const {
 
   placeType,
   PLACE_OPTIONS,
+  disableCustom,
   handlePointerUp,
   handlePointerDown,
   handlePointerMove,
@@ -63,12 +58,14 @@ const MODE_OPTIONS = Object.keys(modes).map(key => ({
 
 const isIdle = computed(() => traverse.value.state.value !== 'idle');
 
+watch(isIdle, (yes) => disableCustom.value = yes);
+
 const createItemClass = (i: number) => ({
-  'item--wall': isWall(i),
-  'item--car': isCar(i),
-  'item--path': isPath(i),
-  'item--start': isStart(i),
-  'item--end': isEnd(i),
+  'item--wall': i === WALL,
+  'item--car': i === CAR,
+  'item--path': i === PATH,
+  'item--start': i === START,
+  'item--end': i === END,
 })
 
 </script>
@@ -94,8 +91,8 @@ const createItemClass = (i: number) => ({
 
       <vp-select :style="{ marginInlineStart: 'auto' }" :disabled="isIdle" :value="mode"
         @change="e => mode = e.target.value" :options="MODE_OPTIONS" />
-      <vp-button :disabled="!traverse.canPlay" @click="traverse.play">开始</vp-button>
-      <vp-button :disabled="!traverse.canPause" @click="traverse.pause">暂停</vp-button>
+      <vp-button :disabled="!traverse.canPlay.value" @click="traverse.play">开始</vp-button>
+      <vp-button :disabled="!traverse.canPause.value" @click="traverse.pause">暂停</vp-button>
       <vp-button @click="traverse.reset">重置</vp-button>
     </div>
     <div class="container">
