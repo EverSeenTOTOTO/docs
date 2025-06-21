@@ -17,13 +17,19 @@
     "@types/react": "^18.3.22",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.4.1",
+    "oxc-minify": "^0.73.2",
     "typescript": "^5.8.3",
-    "vitepress": "^1.6.3"
+    "vitepress": "2.0.0-alpha.6"
   },
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "node --max-old-space-size=8192 node_modules/vitepress/bin/vitepress.js build",
     "docs:preview": "vitepress preview --port 8193"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "npm:rolldown-vite@latest"
+    }
   },
   "packageManager": "pnpm@8.15.6+sha1.8105075ad0aa306138be128c017e9c41e28ecffa"
 }
