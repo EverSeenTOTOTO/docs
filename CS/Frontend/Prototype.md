@@ -1,55 +1,85 @@
-# Javascript和Lua中的原型
+# JavaScript 和 Lua 中的原型继承
 
-## JS的原型机制
+原型继承是一种编程模式，其中对象可以直接从其他对象继承属性和方法。与基于类的继承（如 Java 或 C++）不同，它不依赖于类的蓝图，而是通过一个“原型”对象来克隆和扩展。JavaScript 和 Lua 都采用了这种灵活的继承模型，但实现方式各有特色。本文将深入探讨并比较这两种语言中的原型机制。
 
-`prototype`和`__proto__`傻傻分不清楚？MDN的[这篇文档](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/Object_prototypes)有一些介绍。其实记住一句话就够用了：<Notation>派生类的`prototype`和父类的`prototype`相同，实例的`__proto__`和构造类的`prototype`相同</Notation>。不过，这里的“相同”隐含了可以沿着原型链追溯的意思，并不一定真的完全相等。因为如果我们用派生类的实例去`instanceof`基类，结果应当也是`true`。
+## JavaScript 的原型机制
+
+在 JavaScript 中，原型是理解对象和继承的核心。
+
+### 核心概念：`prototype` 与 `__proto__`
+
+这个概念可以用一句话概括：<Notation>实例的 `__proto__` 指向其构造函数的 `prototype`</Notation>。
+
+-   **`prototype`**: 每个函数（Function）都有一个特殊的属性叫做 `prototype`，它是一个对象。这个对象包含了希望由该函数创建的所有实例共享的属性和方法。
+-   **`__proto__`**: 每个对象实例都有一个 `__proto__` 属性，它指向创建该实例的构造函数的 `prototype` 对象。当试图访问一个对象的属性时，如果对象本身没有，解释器就会沿着 `__proto__` 链向上查找。
 
 :::info
-由于`__proto__`是一个已经废弃的属性，下文我们使用官方推荐的API`Object.getPrototypeOf`和`Object.setPrototypeOf`来操作之。
+`__proto__` 已被废弃。现在推荐使用 `Object.getPrototypeOf()` 和 `Object.setPrototypeOf()` 来访问和设置对象的原型。
 :::
+
+### `new` 操作符与手动实现继承
+
+`new` 关键字为我们自动处理了原型链接。
 
 ```js
 function Base() {}
 
+// 在 Base 的“蓝图”上添加一个属性
 Base.prototype.sth = 42;
 
+// `new` 创建一个新对象，并将其 __proto__ 指向 Base.prototype
 const foo = new Base();
 
+// 访问 foo.sth 时，foo 本身没有，于是沿着原型链找到 Base.prototype.sth
 console.log(foo.sth); // 42
 ```
 
-完全可以把`new`看作是语法糖，自己实现“继承”：
+我们可以将 `new` 看作语法糖，手动实现这个过程：
 
 ```js
 function Base() {}
-
 Base.prototype.sth = 42;
 
-const foo = {};
+const foo = {}; // 创建一个空对象
 
-// foo.__proto__ = Base.prototype
+// 手动将 foo 的原型链接到 Base.prototype
 Object.setPrototypeOf(foo, Base.prototype);
 
 console.log(foo.sth); // 42
 ```
 
-同样的，`class`语法也是语法糖。要实现派生，核心是让派生类的`prototype`上具有的属性与基类`prototype`上的相同，可以直接设置派生类的`prototype`等于基类的，但更好的方式是充分利用原型链机制，让派生类`Derived`的`prototype.__proto__`和基类`Base`的`prototype`相等。这样，在`Derived`的实例`bar`上查找属性时，首先会通过`bar.__proto__`找到`Derived.prototype`，进一步沿着链向上到`Base.prototype`中查找：
+### `class` 语法糖
+
+ES6 的 `class` 语法让 JavaScript 看起来更像传统的面向对象语言，但它本质上仍然是原型继承的语法糖。`extends` 关键字会自动处理派生类和基类原型之间的链接。
 
 ```js
+class Base {
+  constructor() {
+    this.sth = 42;
+  }
+}
+
 class Derived extends Base {}
 
 const bar = new Derived();
 
 console.log(bar.sth); // 42
-console.log(Object.getPrototypeOf(Derived.prototype) == Base.prototype); // true
+
+// `extends` 的关键在于下面这行代码
+// 它将派生类的 prototype 的原型（__proto__）指向了基类的 prototype
+console.log(Object.getPrototypeOf(Derived.prototype) === Base.prototype); // true
 ```
 
-Desugar:
+Desugar 之后的样子：
 
 ```js
+function Base() {}
+Base.prototype.sth = 42;
+
 function Derived() {}
 
-// 比 Derived.prototype = Base.prototype 更好
+// 这是实现继承的关键：将派生类的原型链连接到基类的原型上
+// 这比 `Derived.prototype = Base.prototype` 更好，因为它保留了派生类自己的 prototype 对象
 Object.setPrototypeOf(Derived.prototype, Base.prototype);
 
 const bar = new Derived();
@@ -58,100 +88,95 @@ console.log(bar.sth); // 42
 ```
 
 :::tip
-某种意义上，我们可以将`Derived.prototype`看成是`Base`的实例，因为现在有如下等价关系：
-
-```js
-Derived.prototype.__proto__ === Base.prototype;
-bar.__proto__ === Base.prototype;
-```
-
-对比下可以发现`Derived.prototype`和`bar`在地位上是相同的。因此，也可以这样实现继承：
-
-```js
-Derived.prototype = new Base();
-```
+某种意义上，我们可以将 `Derived.prototype` 看成是 `Base` 的实例，因为 `Derived.prototype.__proto__` 和 `(new Base()).__proto__` 都指向 `Base.prototype`。<Notation>派生类的`prototype`的`__proto__`指向父类的`prototype`。</Notation>因此，`Derived.prototype = new Base()` 也是一种（尽管有些过时）实现继承的方式。
 :::
 
+### 原型污染的风险与防范
 
-写这篇博客的起因是遇到了一个BUG，在试图修改并重用对象的`__proto__`时，不小心污染了`Function.prototype`。因此有这种需求的话要注意两点，<Notation type="underline">一要避免丢失原型上本来有的东西，二要避免污染全局空间</Notation>：
+在动态修改原型时，需要特别小心，既要避免丢失原有功能，也要避免污染全局对象。
 
 ```js
-// Base.__proto__不再是Function.prototype，意味着来自Function.prototype的bind、apply等方法都丢失了
+// 错误做法 1: 完全替换原型，导致丢失原有方法（如 .bind, .apply）
+// Base.__proto__ 不再是 Function.prototype
 Object.setPrototypeOf(Base, { x: 2 });
 
-// Function.prototype.x = 2，污染了全局空间
+// 错误做法 2: 直接修改 Function.prototype，污染了全局空间
+// 所有函数都会被加上 x: 2
 Object.assign(Object.getPrototypeOf(Base), { x: 2 });
 ```
 
-一种解决方法是先将对象的`__proto__`克隆一份，在克隆出来的原型上进行修改，最后再重设为对象的原型：
+正确的做法是创建一个继承自原始原型的**新原型对象**，然后进行修改：
 
 ```js
+// 获取原始原型
 const proto = Object.getPrototypeOf(Base);
+// 创建一个新对象，其原型是 `proto`，并添加新属性
 const newProto = Object.assign(Object.create(proto), { x: 2 });
 
+// 将 Base 的原型设置为这个新创建的对象
 Object.setPrototypeOf(Base, newProto);
 ```
 
-这里使用`Object.create`也是必要的，因为常见的对象拷贝的方法不会拷贝诸如`Function.prototype`上的`bind`等固有属性（可以使用`Object.getOwnPropertyNames`查看固有属性）：
+这里 `Object.create(proto)` 是关键，它能确保新的原型对象仍然链接到原始的原型链上，从而继承 `bind` 等固有属性。
 
-```js
-p = Object.getPrototypeOf(Base);
-x = {...p};
-y = Object.assign(Object.create(null), p);
-z = Object.create(p);
+## Lua 中的元表与继承
 
-p.bind; // ƒ bind() { [native code] }
-x.bind; // undefined
-y.bind; // undefined
-z.bind; // ƒ bind() { [native code] }
-```
+Lua 没有内置的“原型”概念，但通过其强大的**元表（metatable）**机制，可以实现同样灵活的继承。
 
-## Lua中的对比
+### 元表（Metatables）与 `__index`
 
-最近写了一点Lua，不妨做个类比。在Lua中有个与原型对象很相似的东西叫做元表（metatable），一个`table`有了元表，我们就可以通过在元表上定义一些元方法（metamethods）来控制`table`的行为。
+元表是一个普通的 Lua table，用于定义另一个 table 在特定操作下的行为。要实现原型继承，关键在于 `__index` 元方法。
 
-这里的关键在于元表上的元方法，只有定义合适的元方法才能让元表起到和原型对象类似的作用。例如沿着原型链向上的查找机制，如果仅仅这样写是不够的：
+当你在一个 table 中查找一个不存在的键时，Lua 会检查该 table 是否有元表，以及该元表是否有一个 `__index` 字段。
+
+-   如果 `__index` 是一个**函数**，Lua 会调用它。
+-   如果 `__index` 是一个**table**，Lua 会在该 table 中继续查找。这就是实现原型链的关键。
 
 ```lua
 local a = { x = 2 }
 local b = {}
 local c = {}
 
-setmetatable(c, b)
-setmetatable(b, a)
+setmetatable(c, b) -- c 的元表是 b
+setmetatable(b, a) -- b 的元表是 a
 
+-- 此时查找失败，因为我们没有告诉 Lua 如何沿着链查找
 print(c.x) -- nil
 ```
 
-在Lua中，get和set涉及到的元方法是`__index`和`__newindex`，在表上查找元素时，若没找到，会追溯到其元表，并根据元表的`__index`确定进一步查找的方式。`__index`的值可以是另一张表，此时会将该表作为新的查找对象。因此要让对`c.x`的访问能够向上查找到`a`，只需要给`b`和`a`添加`__index`方法并指向自身即可：
+为了让查找能够“向上”传递，我们需要设置 `__index`：
 
 ```lua
 local a = { x = 2 }
 local b = {}
 local c = {}
 
+-- 当在 b 中找不到键时，去 a 中查找
+b.__index = a
 setmetatable(c, b)
-b.__index = b
-setmetatable(b, a)
-a.__index = a
 
+-- 当在 c 中找不到键时，去 b 中查找，b 又会委托给 a
 print(c.x) -- 2
 ```
 
-换句话说，上面先设置`metatable`再设置`__index`的过程与Javascript中的`setPrototype`异曲同工：
+我们可以封装一个辅助函数，使其行为更像 JavaScript 的 `setPrototype`：
 
-```Lua
+```lua
 local function setPrototype(t, p)
-  setmetatable(t, p)
   p.__index = p
+  setmetatable(t, p)
 end
 ```
 
-现在来看看如何实现继承，《Programming in Lua》在讲到[继承](https://www.lua.org/pil/16.2.html)的时候有这么一段代码：
+### 在 Lua 中实现类继承
+
+《Programming in Lua》提供了一个经典的继承实现，但其 `new` 的命名容易引起误解。
 
 ```lua
+-- 基类
 Account = {balance = 0}
 
+-- 这个 "new" 函数更像是 "extend" 或 "derive"，它创建了一个继承自 Account 的新类
 function Account:new (o)
   o = o or {}
   setmetatable(o, self)
@@ -159,82 +184,29 @@ function Account:new (o)
   return o
 end
 
+-- 实例方法
 function Account:deposit (v)
   self.balance = self.balance + v
 end
 
+-- SpecialAccount 是一个继承了 Account 的新“类”
 SpecialAccount = Account:new()
+-- s 是 SpecialAccount 的一个实例
 s = SpecialAccount:new()
 
-s.deposit(1)
+s:deposit(1)
 ```
 
-这里用词`new`其实很迷惑，它的语义更像是派生，应该叫做`derive`、`extend`啥的，因为这里`SpecialAccount = Account:new()`的作用和`class SpecialAccount extends Account`差不多，而`balance`更像是一个静态属性。各实例在调用修改`self.balance`的时候能够互不干扰，完全是因为原型链的查找顺序是先从自己开始的，即首次访问`self.balance`的时候发现自己的`o`上没有，于是从metatable中拿到`Account`的`balance`，然后在赋值的时候在自己的`o`上创建了一个副本，以后`self.balance`操作的是自己的了。
-
-将静态方法和实例方法混为一谈有点不符合我们对OOP的认知，我们更习惯的`new`方法类似这样：
+为了让代码更符合我们对 `new`（创建实例）和 `extend`（创建子类）的直觉，我们可以借鉴 JS 的思想，将类方法和实例方法（原型）分离开。
 
 ```lua
-SpecialAccount = Account:extend() -- 作用等同于 class SpecialAccount extends Account
-
-s1 = Account:new()
-s2 = SpecialAccount:new()
-
-s1:deposit(1)
-s2:deposit(2)
-
-s1:new() -- error, no such method "new"
-```
-
-那么具体要怎么实现`new`方法和`extend`方法呢？可以从JS中受到启发，还是把握住“派生类的`prototype`和父类的`prototype`相同，实例的`__proto__`和构造类的`prototype`相同”这句话。
-
-首先制作一个`prototype`，将类方法和实例方法区分开来。注意本文把`new`、`extend`这些类对象上具有的方法称为类方法，常规的成员方法称为实例方法：
-
-```lua
-Account.prototype = {balance = 0}
-
-function Account.prototype:deposit(v)
-  self.balance = self.balance + v
-end
-```
-
-> 这里我们依然保留了利用原型链查找机制的静态默认值`{balance = 0}`，如果要更OOP一点的话，可以在下面的构造函数`new`中设置`o.balance = 0`。
-
-创建实例的要点是让实例的`__proto__`等同于`Account.prototype`，并且能够向上在`__proto__`上查找属性：
-
-```lua
-function Account:new() -- 注意不是Account.prototype:new
-  local o = {
-    __proto__ = self.prototype
-  }
-
-  setPrototype(o, o.__proto__)
-
-  return o
-end
-```
-
-创建派生类的要点是让派生类的`prototype`和基类`prototype`一致，这里直接用`new`可能有点hack，参见前面的 tip。同时让派生类获取`Account`上面的方法：
-
-```lua
-function Account:extend()
-  -- 让派生类的`prototype`和基类`prototype`一致
-  local o = { prototype = self:new() }
-
-  -- 获取Account上面的方法
-  setPrototype(o, self)
-
-  return o
-end
-```
-
-完整的代码如下：
-
-```lua
+-- 辅助函数
 local function setPrototype(t, p)
   setmetatable(t, p)
   p.__index = p
 end
 
+-- 1. 定义基类和它的 prototype
 Account = { prototype = { balance = 0 } }
 
 function Account.prototype:deposit(v)
@@ -242,50 +214,55 @@ function Account.prototype:deposit(v)
   print(self.balance)
 end
 
-function Account:new() -- 注意不是Account.prototype:new
-  local o = {
-    __proto__ = self.prototype
-  }
-
-  setPrototype(o, o.__proto__)
-
+-- 2. 定义类方法 `new`，用于创建实例
+function Account:new()
+  local o = {}
+  -- 实例的 __proto__ 指向类的 prototype
+  setPrototype(o, self.prototype)
   return o
 end
 
+-- 3. 定义类方法 `extend`，用于创建子类
 function Account:extend()
-  -- 让派生类的`prototype`和基类`prototype`一致
+  -- 创建一个新类，其 prototype 是基类的一个实例
   local o = { prototype = self:new() }
-
   -- 获取Account上面的方法
   setPrototype(o, self)
-
   return o
 end
 
+-- --- 使用 ---
+
+-- 创建实例
 local s1 = Account:new()
+print(getmetatable(s1) == Account.prototype) -- true
 
-print(s1.__proto__ == Account.prototype) -- true
+-- 创建子类
+SpecialAccount = Account:extend()
+print(getmetatable(SpecialAccount.prototype) == Account.prototype) -- true
 
-SpecialAccount = Account:extend() -- 作用等同于 class SpecialAccount extends Account
-
-print(SpecialAccount.prototype.__proto__ == Account.prototype) -- true
-
+-- 创建子类的实例
 local s2 = SpecialAccount:new()
 
 s1:deposit(1) -- 1
 s2:deposit(2) -- 2
 
--- s1:new() -- error: attempt to call method 'new' (a nil value)
-
+-- 在原型上添加新方法，所有实例（包括子类的实例）都能访问
 Account.prototype.foo = function() print(42) end
-
 s2:foo() -- 42
 ```
 
 <img src="./prototype.svg" />
 
-上述实现有个微妙的问题：实例方法中的`self`始终指向的是`Account.prototype`，没办法拿到类`Account`自己，这时，依然可以模仿JS，在`Account.prototype`上加一个属性`constructor`，让其指向类对象自身。
+## 总结：JS 与 Lua 的异同
+
+| 特性 | JavaScript | Lua |
+| :--- | :--- | :--- |
+| **核心机制** | `prototype` 属性和 `__proto__` 链 | `metatable` 和 `__index` 元方法 |
+| **实现方式** | 语言内置，语法更明确 | 开发者通过元表手动实现，更灵活 |
+| **语法糖** | `class`, `extends` | 无，完全依赖 table 和函数 |
+| **生态** | 继承模式相对标准化 | OOP 实现模式多样，取决于库或框架 |
 
 ::: tip
-[这里](https://github.com/EverSeenTOTOTO/eventloop-in-lua/blob/main/src/class.lua)有基于本文沉淀的一套原型链实现，支持`new`、`extend`、`isInstance`、`isDerived`等方法。
+[这里](https://github.com/EverSeenTOTOTO/eventloop-in-lua/blob/main/src/class.lua)有基于本文沉淀的一套 Lua 原型链实现，支持 `new`、`extend`、`isInstance`、`isDerived` 等方法。
 :::

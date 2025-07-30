@@ -2,29 +2,42 @@
 
 ## Web平台
 
-宏任务的概念实际上并不存在，只是为了和微任务对应而附会的一个概念。[浏览器标准](https://html.spec.whatwg.org/multipage/webappapis.html#event-loops)中相关的概念应该是<Notation type="circle">Task</Notation>，代表了诸如事件调度、timers回调、DOM、网络等任务。重点在8.1.7.3节Processing Model，每次完成一个任务会有一个微任务检查点，如果当前微任务队列不为空，则持续运行微任务直到队列为空，然后才会做一次Update the rendering。
+宏任务（Macrotask）与微任务（Microtask）是理解 Web 平台异步行为的关键。实际上，[WHATWG 规范](https://html.spec.whatwg.org/multipage/webappapis.html#event-loops)中并没有“宏任务”这个术语，而是称之为 <mark>Task</mark>。为了便于理解，社区普遍采用“宏任务”来与“微任务”进行区分。
 
-在屏幕上有一个绝对定位的按钮，像下面这段代码，点击按钮能明显看到按钮闪烁了一下，如果将`setTimeout`改为`queueMicrotask`则不会，这或许能作为Task和Microtask执行时机的一个例子，变更DOM是一次Task，执行完之后有一个微任务检查点，因此使用`queueMicrotask`的话会先处理掉`btn.style.left = null`的回调再作渲染。而`setTimeout`创建的是Task，排在本轮渲染之后。用`MessageChannel`和`setImmediate`是同样的效果。比较特殊的是`requestAnimationFrame`，虽然是宏任务，但从标准中可以看出它运行在渲染阶段，处在Layout/Paint小阶段之前，所以如果用`requestAnimationFrame`也不会闪烁。
+每次事件循环（Event Loop）只会执行一个宏任务。在该宏任务执行完毕后，会立即处理所有在当前任务执行期间产生的微任务，直到微任务队列（Microtask Queue）为空。只有在微任务队列清空后，浏览器才会进行必要的渲染更新（Update the rendering）。
 
-```js
-const btn = document.querySelector('button')!;
-
-btn.style.left = '100px';
-setTimeout(() => { btn.style.left = null; });
-```
-
-进一步验证，在改变按钮位置后为`100px`后先调用`setTimeout`确保渲染到屏幕上，然后重置按钮位置，但重置后立刻做一个无限嵌套自身的微任务，这时可以观察到主线程直接卡住且按钮的重置并没有被渲染出来。
+一个清晰的例子是 `setTimeout` (宏任务) 和 `Promise.then` (微任务) 的执行顺序：
 
 ```js
-const btn = document.querySelector('button')!;
-const block = () => queueMicrotask(block);
-
-btn.style.left = '100px';
+console.log('script start');
 
 setTimeout(() => {
-  btn.style.left = null;
-  block();
+  console.log('setTimeout');
+}, 0);
+
+Promise.resolve().then(() => {
+  console.log('promise1');
+}).then(() => {
+  console.log('promise2');
 });
+
+console.log('script end');
+
+// 输出顺序:
+// script start
+// script end
+// promise1
+// promise2
+// setTimeout
+```
+
+`requestAnimationFrame` (rAF) 的执行时机比较特殊。它被设计用来在下一次浏览器重绘（repaint）之前执行，因此非常适合用于动画。尽管它被归类为宏任务，但其调度优先级非常高，由浏览器保证在渲染之前调用，从而避免丢帧和不必要的计算。
+
+如果微任务队列持续不断地添加新的微任务，事件循环将无法进入下一个宏任务或渲染阶段，这会导致页面“卡死”。例如，以下代码会阻塞主线程，使页面无响应：
+
+```js
+const block = () => queueMicrotask(block);
+block();
 ```
 
 常见的宏任务API：timers、`requestAnimationFrame`、`requestIdleCallback`、`MessageChannel`等。
@@ -52,6 +65,7 @@ setTimeout(() => {
     │  │         poll          │<─────┤  connections, │
     │  └──────────┬────────────┘      │   data, etc.  │
     │  ┌──────────┴────────────┐      └───────────────┘
+    │  ┌──────────┴────────────┐
     │  │        check          │
     │  └──────────┬────────────┘
     │  ┌──────────┴────────────┐
@@ -186,14 +200,15 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
 ### `process.nextTick()`
 
-NodeJS 自己也吐嘈了，它的`nextTick`有立即执行的作用，而`setImmediate`却有下一个“tick”才执行的作用。为什么会出现这种情况呢？按照官方的文档，不管当前是事件循环的哪一个阶段，nextTickQueue 会在当前“操作”完成后立即处理，这里“操作”是来自 NodeJS 底层的概念，代表的就是“宏任务”或者说浏览器标准中的 Task，所以 NodeJS 的事件循环调度要做到与 Web 平台一致，其关键就在于每个 Task 之后清空微任务队列。故 nextTickQueue 作为微任务队列总是在进入下一个 Task 前处理完，因此`setImmediate`作为宏任务，自然会晚于本次宏任务执行过程中产生的微任务调度。
-
-作为微任务，`process.nextTick()`优先级甚至比常规的`Promise`还高，下面的代码会先输出`2`再输出`1`。
+`process.nextTick()` 在概念上虽然是微任务，但它有自己独立的队列（`nextTickQueue`），并且优先级高于 `Promise` 的微任务队列。Node.js 会在当前操作（例如一个阶段的回调执行）完成后、进入事件循环的下一个阶段之前，清空 `nextTickQueue`。这意味着 `nextTick` 的回调会比 `Promise.then` 的回调更早执行。
 
 ```js
-Promise.resolve().then(() => console.log('1'));
+Promise.resolve().then(() => console.log('promise'));
+process.nextTick(() => console.log('nextTick'));
 
-process.nextTick(() => console.log('2'));
+// 输出顺序:
+// nextTick
+// promise
 ```
 
-在有了`queueMicrotask`之后，`process.nextTick()`已经不推荐使用了，`queueMicrotask`创建的是和`Promise`同等优先级的微任务，便于梳理程序执行流。
+由于这种特殊的行为，官方现在更推荐使用 `queueMicrotask`，它能提供一个与 `Promise` 行为一致的标准微任务，从而使代码逻辑更清晰、更易于跨平台（Web 和 Node.js）复用。

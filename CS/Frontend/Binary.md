@@ -2,48 +2,48 @@
 
 ## `ArrayBuffer`、`DataView`和`TypedArray`
 
-这三个的概念还是比较清晰的，`ArrayBuffer`代表了一块原始内存，以字节为单位；`DataView`则代表对这块数据的解释方式，同样一块内存区域上的二进制bit，我们可以解释为`int8`、`int32`、`uint32`、`float32`等；`TypedArray`自身并不是一个类型，而是对`Uint8Array`、`Float32Array`这些类的统称。例如，我们可以创建一块8byte的内存，然后利用`DataView`给内存中部分区域赋值，这里将前16位设置成`1100 0001 0100 1100`，其他没有赋值的部分默认会初始化为`0`，然后对前32位按照浮点数解释，ECMA Script遵循IEEE754标准，因此这个数是$-12.75$。
+这三个的概念还是比较清晰的，`ArrayBuffer`代表了一块原始内存，以字节为单位；`DataView`则代表对这块数据的解释方式，同样一块内存区域上的二进制bit，我们可以解释为`int8`、`int32`、`uint32`、`float32`等；`TypedArray`自身并不是一个类型，而是对`Uint8Array`、`Float32Array`这些类的统称。
+
+在使用`DataView`的时候，要特别注意大端（Big Endian）和小端（Little Endian）的问题。`TypedArray` 会使用当前操作系统的 Endianness，而 `DataView` 则可以手动指定，默认为大端。
+
+例如，对于一个 16-bit 的整数 `0x0102` (十进制的 258):
+- **Big Endian**: 高位字节在前，低位字节在后。内存中存储为 `01 02`。
+- **Little Endian**: 低位字节在前，高位字节在后。内存中存储为 `02 01`。
+
+如果我们在一个采用小端模式的机器上，以大端模式写入数据，然后以系统默认的小端模式去读，就会产生非预期的结果。
 
 ```js
-const buffer = new ArrayBuffer(8);
-const view = new DataView(buffer)
+const buffer = new ArrayBuffer(2);
+const view = new DataView(buffer);
 
-view.setUint16(0, 0b1100000101001100);
-console.log(view.getFloat32(0)); // -12.75
+// 默认以大端模式写入 0x0102
+view.setUint16(0, 0x0102);
 
-const f = new Float32Array(buffer, 0, 1); // 取buffer位置0处的1个32位浮点数，即将buffer前32位解释为浮点数
-console.log(f[0]); // 2.753411352551833e-41
+// DataView 默认以大端模式读取，结果正确
+console.log(view.getUint16(0).toString(16)); // "102"
+
+// TypedArray 会使用系统默认的 Endianness（大部分现代设备是小端）
+// 小端模式下，内存中的 `01 02` 会被解释为 `0x0201` (十进制 513)
+console.log(new Uint16Array(buffer)[0].toString(16)); // "201"
 ```
 
-在使用`DataView`的时候，要特别注意大端和小端的问题。上面`f[0]`的值是`2.753411352551833e-41`，因为`view.setUint16`在第三个参数不设为`true`的时候默认按照大端方式放置，而`new Float32Array`的时候按照当前机器的大小端（我的机器是小端）方式解读`buffer`中的`-12.75`，因此得到这个奇怪的数。`-12.75`是`C1H 4CH 00H 00H`，我们手动按照小端方式低地址到高地址的顺序排好`00H 00H 4CH C1H`，再创建`f`就可以得到`-12.75`：
-
-```js
-view.setUint32(0, 0x4cc1);
-
-new Float32Array(buffer)[0]; // 按机器大小端解读，-12.75
-view.getFloat32(0);          // 按大端解读，2.753411352551833e-41
-view.getFloat32(0, true);    // 按小端解读，-12.75
-```
-
-详细看看“奇怪的数”的来源，大端解读低地址最高有效位，因此有`00H 00H 4CH C1H`。按照IEEE754浮点数标准，符号位是0，阶码全0，这是一个非规格数，因此阶码值固定为$-126$，而且小数点前面没有规格数默认省略的$1$。尾数部分还剩下23位，是`000 0000 0100 1100 1100 0001`，故最终的值就是$(2^{-9}+2^{-12}+2^{-13}+2^{-16}+2^{-17}+2^{-23}) * 2^{-126} = 2.753411352551833e-41$。
-
-利用这个特性可以检测当前机器是大端还是小端，256等于`01H 00H`，按照小端存放从低地址到高地址依次是`00H 01H`，因此如果机器按照大端方式解读，这个数将是`1`：
+利用这个特性可以检测当前机器是大端还是小端：
 
 ```js
 // see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
 function isLittleEndian() {
   const buffer = new ArrayBuffer(2);
-
+  // 以小端模式写入 16-bit 整数 256 (0x0100)
   new DataView(buffer).setInt16(0, 256, true /* littleEndian */);
-
-  // new DataView(buffer).getInt16(0); // 按照大端解读将是1
-
-  // Int16Array uses the platform's endianness.
+  // 在小端机器上，内存布局为 00 01。
+  // Int16Array 使用平台的 Endianness 读取。
+  // 如果平台是小端，它会正确读取为 256。
+  // 如果平台是大端，它会把 `00 01` 读作 1。
   return new Int16Array(buffer)[0] === 256;
 }
 ```
 
-除了`ArrayBuffer`之外，还有一个`SharedArrayBuffer`，它和`ArrayBuffer`的区别在于`Transferable`。通俗的说就是`ArrayBuffer`一旦作为`postMessage`的参数传递给其他线程（`web worker`）之后，本线程关联的内存资源将被`detach`，资源被`attach`给其他线程了，这时在本线程调用`buffer.byteLength`将得到`0`。而`SharedArrayBuffer`作为`postMessage`的参数时，双方都持有这块内存，故通常需要使用`Atomic`来操作该内存区域以防止竞态。<Notation type="del">然后又造了一遍锁和信号量的轮子，谁说js没有多线程的</Notation>。出于浏览器安全性的考虑，使用`SharedArrayBuffer`还需要注意[跨域问题](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)。
+除了`ArrayBuffer`之外，还有一个`SharedArrayBuffer`，它和`ArrayBuffer`的区别在于`Transferable`。通俗的说就是`ArrayBuffer`一旦作为`postMessage`的参数传递给其他线程（`web worker`）之后，本线程关联的内存资源将被`detach`，资源被`attach`给其他线程了，这时在本线程调用`buffer.byteLength`将得到`0`。而`SharedArrayBuffer`作为`postMessage`的参数时，双方都持有这块内存，故通常需要使用`Atomic`来操作该内存区域以防止竞态。出于浏览器安全性的考虑，使用`SharedArrayBuffer`还需要注意[跨域问题](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)。
 
 ## 优秀的“中间人”
 
@@ -78,29 +78,28 @@ rsp.text().then(console.log); // 我
 ### `string` 转 `Blob`
 
 ```ts
-const str2Blob = (str: string): Blob => new Blob(str.split(''));
+const str2Blob = (str: string): Blob => new Blob([str]);
 ```
 
 ### `Blob` 转 `string`
 
 ```ts
-const blob2str = (blob: Blob) => blob.arrayBuffer().then((ab) => new Response(ab)).then((response) => response.text());
+const blob2str = (blob: Blob): Promise<string> => blob.text();
 ```
 
 ### `Blob` 转 `Data URL`/`string`/`ArrayBuffer`，可通过`FileReader`
 
 ```ts
-const blob2DataUrl = (blob: Blob | File) => new Promise<string>((resolve, reject) => {
+const blob2DataUrl = (blob: Blob | File): Promise<string> => {
   const reader = new FileReader();
-
-  reader.onload = (e) => resolve(e.target?.result);
-  reader.onerror = (e) => reject(e);
-
   reader.readAsDataURL(blob);
   // reader.readAsText(blob);
   // reader.readAsArrayBuffer(blob);
-  // reader.readAsBinaryString(blob);
-});
+  return new Promise((resolve, reject) => {
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+  });
+};
 ```
 
 ### `Blob` 转 `ObjectURL`

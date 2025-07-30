@@ -148,7 +148,7 @@ export class TaskQueue {
   schedule(task: Task):void;
   schedule(task: any) {       // [!code focus]
     if (typeof task === 'function') {
-      this.tasks.push({ job: task, priority: /* lowest */ this.tasks.length });
+      this.tasks.push({ job: task, priority: /* lowest */ Number.MAX_SAFE_INTEGER });
     } else {
       this.tasks.push(task);
     }
