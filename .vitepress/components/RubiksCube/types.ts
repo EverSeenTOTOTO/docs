@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type FaceName = 'U' | 'D' | 'L' | 'R' | 'F' | 'B';
+export type FaceName = 'U' | 'D' | 'L' | 'R' | 'F' | 'B' | 'M' | 'E' | 'S';
 export type RotationDir = 1 | -1; // 1 = clockwise, -1 = counter-clockwise
 
 export interface Move {
@@ -19,7 +19,8 @@ export interface CubieData {
 }
 
 export const FACE_COLORS: Record<FaceName, Color> = {
-  U: 'W', D: 'Y', L: 'O', R: 'R', F: 'G', B: 'B'
+  U: 'W', D: 'Y', L: 'O', R: 'R', F: 'G', B: 'B',
+  M: 'O', E: 'Y', S: 'G' // Middle layers follow L, D, F directions
 };
 
 export const COLOR_HEX: Record<Color, number> = {
@@ -29,3 +30,9 @@ export const COLOR_HEX: Record<Color, number> = {
 
 // Face order in state string
 export const FACE_ORDER: FaceName[] = ['U', 'R', 'F', 'D', 'L', 'B'];
+
+// Highlight configuration
+export interface HighlightConfig {
+  face: FaceName;
+  positions: number[]; // 0-8 index on the face
+}

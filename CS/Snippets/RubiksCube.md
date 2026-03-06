@@ -4,7 +4,7 @@ import RubiksCube from '@vp/RubiksCube/index.vue'
 
 # 魔方
 
-<RubiksCube defaultValue="L U" />
+<RubiksCube defaultValue="L U" :highlights="[{face: 'U', positions: [0, 4, 8]}]" />
 
 ## 魔方实现细节
 
@@ -25,9 +25,10 @@ import RubiksCube from '@vp/RubiksCube/index.vue'
 ### 核心类型定义
 
 ```ts
-// 六个面的标准符号
-type FaceName = 'U' | 'D' | 'L' | 'R' | 'F' | 'B';
-// 上(Up) 下(Down) 左(Left) 右(Right) 前(Front) 后(Back)
+// 面的标准符号（包含中间层）
+type FaceName = 'U' | 'D' | 'L' | 'R' | 'F' | 'B' | 'M' | 'E' | 'S';
+// 外层：U(Up) D(Down) L(Left) R(Right) F(Front) B(Back)
+// 中间层：M(Middle) E(Equator) S(Standing)
 
 // 旋转方向：1=顺时针，-1=逆时针
 type RotationDir = 1 | -1;
@@ -41,12 +42,23 @@ interface Move {
   face: FaceName;
   dir: RotationDir;
 }
+
+// 高亮配置
+interface HighlightConfig {
+  face: FaceName;
+  positions: number[]; // 0-8 索引，指定面上高亮的位置
+}
 ```
 
 颜色映射：
 - U → W（白色）、D → Y（黄色）
 - L → O（橙色）、R → R（红色）
 - F → G（绿色）、B → B（蓝色）
+
+中间层方向约定：
+- **M** (Middle)：L 和 R 之间的列，方向跟随 L
+- **E** (Equator)：U 和 D 之间的横，方向跟随 D
+- **S** (Standing)：F 和 B 之间的层，方向跟随 F
 
 ### 3D 场景实现
 
@@ -105,12 +117,15 @@ if (this.isAnimating) {
 | `R` | 右面顺时针旋转 90° |
 | `R'` | 右面逆时针旋转 90° |
 | `R2` | 右面旋转 180° |
+| `M` | 中间列（跟随 L 方向） |
+| `E` | 中间横（跟随 D 方向） |
+| `S` | 中间层（跟随 F 方向） |
 
 解析函数使用正则表达式：
 
 ```ts
-const regex = /([URFDLB])(['2])?/gi;
-// 捕获面名和可选后缀
+const regex = /([URFDLBMES])(['2])?/gi;
+// 捕获面名（含中间层）和可选后缀
 ```
 
 ### 打乱算法
@@ -123,6 +138,41 @@ for (let i = 0; i < 20; i++) {
   do {
     face = randomFace();
   } while (face === lastFace);
+  // ...
+}
+```
+
+### 重置视角
+
+相机初始位置为 `(5, 5, 5)`，使用 OrbitControls 允许自由旋转视角。点击「重置视角」按钮可回归初始位置：
+
+```ts
+resetCamera(): void {
+  this.camera.position.copy(this.initialCameraPosition);
+  this.camera.lookAt(this.initialCameraTarget);
+}
+```
+
+### 高亮贴纸
+
+通过 `highlights` prop 指定要高亮的贴纸位置：
+
+```vue
+<RubiksCube :highlights="[{face: 'U', positions: [0, 4, 8]}]" />
+```
+
+实现原理：
+1. 遍历所有 cubie，根据位置判断其所属面
+2. 计算每个 cubie 在面上的索引（0-8）
+3. 匹配高亮配置，为匹配的贴纸添加青色发光边框
+4. 使用 `THREE.LineSegments` 绘制边框
+
+```ts
+setHighlights(highlights: HighlightConfig[]): void {
+  // 清除现有高亮
+  this.highlightEdges.forEach(edge => this.scene.remove(edge));
+  
+  // 根据配置添加新高亮
   // ...
 }
 ```

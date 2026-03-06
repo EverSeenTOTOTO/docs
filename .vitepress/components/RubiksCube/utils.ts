@@ -4,7 +4,7 @@ import { FaceName, Move, RotationDir, CubeState, FACE_ORDER } from './types';
 // Parse move string like "R U R' U'" into Move[]
 export function parseMoves(str: string): Move[] {
   const moves: Move[] = [];
-  const regex = /([URFDLB])(['2])?/gi;
+  const regex = /([URFDLBMES])(['2])?/gi;
   let match;
   
   while ((match = regex.exec(str)) !== null) {
@@ -36,6 +36,10 @@ export function getFaceAxis(face: FaceName): THREE.Vector3 {
     case 'L': return new THREE.Vector3(-1, 0, 0);
     case 'F': return new THREE.Vector3(0, 0, 1);
     case 'B': return new THREE.Vector3(0, 0, -1);
+    // Middle layers
+    case 'M': return new THREE.Vector3(-1, 0, 0); // Follows L
+    case 'E': return new THREE.Vector3(0, -1, 0); // Follows D
+    case 'S': return new THREE.Vector3(0, 0, 1);  // Follows F
   }
 }
 
@@ -124,7 +128,7 @@ function getPermutationCycles(face: FaceName, dir: RotationDir): number[][] {
   //            6 7 8
   
   // Define cycles for each face (clockwise)
-  const faceCycles: Record<FaceName, number[][]> = {
+  const faceCycles: Partial<Record<FaceName, number[][]>> = {
     U: [
       [2, 11, 20, 45], [1, 14, 23, 48], [0, 17, 26, 51], // R-F-B edges
       [2, 9, 18, 47], [0, 11, 20, 45] // corners
@@ -143,14 +147,29 @@ function getPermutationCycles(face: FaceName, dir: RotationDir): number[][] {
     ],
     B: [
       [2, 38, 8, 11], [1, 41, 7, 14], [0, 44, 6, 17], // U-L-D-R
-    ]
+    ],
+    // Middle layer cycles (M follows L, E follows D, S follows F)
+    // M: rotates x=0 layer, affects U/F/D/B middle column (indices 1,4,7)
+    M: [
+      [1, 19, 28, 52], [4, 22, 31, 49], [7, 25, 34, 46], // U-F-D-B middle column
+    ],
+    // E: rotates y=0 layer, affects F/L/B/R middle row
+    E: [
+      [21, 39, 48, 12], [22, 42, 49, 13], [23, 45, 50, 14], // F-L-B-R middle row
+    ],
+    // S: rotates z=0 layer, affects U/R/D/L middle row
+    S: [
+      [3, 10, 30, 37], [4, 13, 31, 40], [5, 16, 32, 43], // U-R-D-L middle row
+    ],
   };
   
-  // Simplified: just return the basic edge cycles
+  const cycles = faceCycles[face];
+  if (!cycles) return [];
+  
   if (dir === 1) {
-    return faceCycles[face];
+    return cycles;
   } else {
-    return faceCycles[face].map(cycle => [...cycle].reverse());
+    return cycles.map(cycle => [...cycle].reverse());
   }
 }
 

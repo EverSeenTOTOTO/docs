@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RubiksCubeScene } from './Cube';
-import { FaceName, Move } from './types';
+import { FaceName, HighlightConfig, Move } from './types';
 import { parseMoves, solvedState } from './utils';
 
 const MOVE_BUTTONS: { face: FaceName; label: string }[] = [
@@ -11,24 +11,31 @@ const MOVE_BUTTONS: { face: FaceName; label: string }[] = [
   { face: 'R', label: 'R' },
   { face: 'F', label: 'F' },
   { face: 'B', label: 'B' },
+  // Middle layers
+  { face: 'M', label: 'M' },
+  { face: 'E', label: 'E' },
+  { face: 'S', label: 'S' },
 ];
 
 export interface RubiksCubeRef {
   executeMoves: (moves: string) => Promise<void>;
   reset: () => void;
+  resetCamera: () => void;
   scramble: () => Promise<void>;
+  setHighlights: (highlights: HighlightConfig[]) => void;
 }
 
 interface RubiksCubeProps {
   defaultValue?: string;
   value?: string;
   onChange?: (state: string) => void;
+  highlights?: HighlightConfig[];
   className?: string;
   style?: React.CSSProperties;
 }
 
 const RubiksCube = forwardRef<RubiksCubeRef, RubiksCubeProps>(
-  ({ defaultValue, value, onChange, className, style }, ref) => {
+  ({ defaultValue, value, onChange, highlights, className, style }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sceneRef = useRef<RubiksCubeScene | null>(null);
     const controlsRef = useRef<OrbitControls | null>(null);
@@ -73,6 +80,13 @@ const RubiksCube = forwardRef<RubiksCubeRef, RubiksCubeProps>(
         scene.dispose();
       };
     }, []);
+
+    // Apply highlights when they change
+    useEffect(() => {
+      if (sceneRef.current && highlights) {
+        sceneRef.current.setHighlights(highlights);
+      }
+    }, [highlights]);
 
     // Execute a single move
     const executeMove = useCallback(async (face: FaceName, dir: 1 | -1 = 1) => {
@@ -127,12 +141,25 @@ const RubiksCube = forwardRef<RubiksCubeRef, RubiksCubeProps>(
       onChange?.(solvedState());
     }, [onChange]);
 
+    // Reset camera
+    const resetCamera = useCallback(() => {
+      sceneRef.current?.resetCamera();
+      controlsRef.current?.reset();
+    }, []);
+
+    // Set highlights
+    const setHighlightsFn = useCallback((newHighlights: HighlightConfig[]) => {
+      sceneRef.current?.setHighlights(newHighlights);
+    }, []);
+
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
       executeMoves,
       reset,
+      resetCamera,
       scramble,
-    }), [executeMoves, reset, scramble]);
+      setHighlights: setHighlightsFn,
+    }), [executeMoves, reset, resetCamera, scramble, setHighlightsFn]);
 
     return (
       <div className={className} style={{ ...style }}>
@@ -211,6 +238,20 @@ const RubiksCube = forwardRef<RubiksCubeRef, RubiksCubeProps>(
             }}
           >
             重置
+          </button>
+          <button
+            onClick={resetCamera}
+            style={{
+              padding: '8px 20px',
+              fontSize: '14px',
+              background: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            重置视角
           </button>
         </div>
 

@@ -6,6 +6,7 @@
     "clsx": "^2.1.1",
     "codejar": "^4.3.0",
     "lxgw-wenkai-lite-webfont": "^1.7.0",
+    "markdown-it": "^14.1.1",
     "markdown-it-footnote": "^3.0.3",
     "markdown-it-mathjax3": "^4.3.2",
     "react": "^18.3.1",
@@ -15,6 +16,7 @@
     "vue": "^3.5.26"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^20.19.30",
     "@types/react": "^18.3.27",
     "@types/react-dom": "^18.3.7",

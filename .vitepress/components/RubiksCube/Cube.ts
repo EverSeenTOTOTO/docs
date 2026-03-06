@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Color, COLOR_HEX, CubeState, CubieData, FACE_COLORS, FaceName } from './types';
+import { Color, COLOR_HEX, CubeState, CubieData, FACE_COLORS, FaceName, HighlightConfig } from './types';
 import { applyMoveToState, parseMoves } from './utils';
 
 const CUBIE_SIZE = 1;
@@ -11,6 +11,10 @@ const FACE_NORMALS: Record<FaceName, THREE.Vector3> = {
   L: new THREE.Vector3(-1, 0, 0),
   F: new THREE.Vector3(0, 0, 1),
   B: new THREE.Vector3(0, 0, -1),
+  // Middle layers
+  M: new THREE.Vector3(-1, 0, 0), // Follows L direction
+  E: new THREE.Vector3(0, -1, 0), // Follows D direction
+  S: new THREE.Vector3(0, 0, 1),  // Follows F direction
 };
 
 // Solved state: U=White, R=Red, F=Green, D=Yellow, L=Orange, B=Blue
@@ -25,6 +29,9 @@ export class RubiksCubeScene {
   isAnimating = false;
   animationQueue: Array<{ face: FaceName; dir: 1 | -1; callback?: () => void }> = [];
   private currentState: CubeState = SOLVED_STATE;
+  private highlightEdges: Array<{ mesh: THREE.Mesh; edge: THREE.LineSegments }> = [];
+  private initialCameraPosition = new THREE.Vector3(5, 5, 5);
+  private initialCameraTarget = new THREE.Vector3(0, 0, 0);
 
   constructor(container: HTMLElement) {
     // Scene
@@ -142,10 +149,6 @@ export class RubiksCubeScene {
 
   // Get cubies on a specific layer
   getCubiesOnLayer(face: FaceName): CubieData[] {
-    const layerIndex = face === 'U' ? 1 : face === 'D' ? -1 :
-      face === 'R' ? 1 : face === 'L' ? -1 :
-        face === 'F' ? 1 : -1;
-
     return this.cubies.filter(cubie => {
       const pos = cubie.mesh.position;
       const roundedPos = new THREE.Vector3(
@@ -155,12 +158,16 @@ export class RubiksCubeScene {
       );
 
       switch (face) {
-        case 'U': return roundedPos.y === layerIndex;
-        case 'D': return roundedPos.y === layerIndex;
-        case 'R': return roundedPos.x === layerIndex;
-        case 'L': return roundedPos.x === layerIndex;
-        case 'F': return roundedPos.z === layerIndex;
-        case 'B': return roundedPos.z === layerIndex;
+        case 'U': return roundedPos.y === 1;
+        case 'D': return roundedPos.y === -1;
+        case 'R': return roundedPos.x === 1;
+        case 'L': return roundedPos.x === -1;
+        case 'F': return roundedPos.z === 1;
+        case 'B': return roundedPos.z === -1;
+        // Middle layers
+        case 'M': return roundedPos.x === 0; // Middle column (follows L)
+        case 'E': return roundedPos.y === 0; // Equator (follows D)
+        case 'S': return roundedPos.z === 0; // Standing (follows F)
       }
     });
   }
@@ -310,12 +317,166 @@ export class RubiksCubeScene {
     this.renderer.render(this.scene, this.camera);
   }
 
+  // Reset camera to initial position
+  resetCamera(): void {
+    this.camera.position.copy(this.initialCameraPosition);
+    this.camera.lookAt(this.initialCameraTarget);
+  }
+
+  // Set highlights on specific stickers
+  setHighlights(highlights: HighlightConfig[]): void {
+    // Remove existing highlight edges from cubies
+    this.highlightEdges.forEach(({ mesh, edge }) => {
+      mesh.remove(edge);
+      edge.geometry.dispose();
+      (edge.material as THREE.Material).dispose();
+    });
+    this.highlightEdges = [];
+
+    if (!highlights || highlights.length === 0) return;
+
+    // Build a map of face -> positions to highlight
+    const highlightMap = new Map<FaceName, Set<number>>();
+    highlights.forEach(h => {
+      if (!highlightMap.has(h.face)) {
+        highlightMap.set(h.face, new Set());
+      }
+      h.positions.forEach(pos => highlightMap.get(h.face)!.add(pos));
+    });
+
+    // Face to axis and layer mapping
+    const faceConfig: Record<string, { axis: 'x' | 'y' | 'z', layer: number, faceIndex: number }> = {
+      'R': { axis: 'x', layer: 1, faceIndex: 0 },
+      'L': { axis: 'x', layer: -1, faceIndex: 1 },
+      'U': { axis: 'y', layer: 1, faceIndex: 2 },
+      'D': { axis: 'y', layer: -1, faceIndex: 3 },
+      'F': { axis: 'z', layer: 1, faceIndex: 4 },
+      'B': { axis: 'z', layer: -1, faceIndex: 5 },
+    };
+
+    // For each cubie, check if any of its faces should be highlighted
+    this.cubies.forEach(cubie => {
+      const pos = cubie.mesh.position;
+      const roundedPos = new THREE.Vector3(
+        Math.round(pos.x),
+        Math.round(pos.y),
+        Math.round(pos.z)
+      );
+
+      // Check each face of this cubie
+      Object.entries(faceConfig).forEach(([faceName, config]) => {
+        const isOnFace = roundedPos[config.axis] === config.layer;
+        if (!isOnFace) return;
+
+        const positions = highlightMap.get(faceName as FaceName);
+        if (!positions) return;
+
+        // Calculate which position on the face this cubie is
+        let row: number, col: number;
+        if (config.axis === 'x') {
+          // R or L face: y is row (inverted for L), z is col
+          row = config.layer === 1 ? (1 - roundedPos.y) : (roundedPos.y + 1);
+          col = config.layer === 1 ? (roundedPos.z + 1) : (1 - roundedPos.z);
+        } else if (config.axis === 'y') {
+          // U or D face: z is row, x is col
+          row = config.layer === 1 ? (1 - roundedPos.z) : (roundedPos.z + 1);
+          col = roundedPos.x + 1;
+        } else {
+          // F or B face: y is row (inverted), x is col
+          row = 1 - roundedPos.y;
+          col = config.layer === 1 ? (roundedPos.x + 1) : (1 - roundedPos.x);
+        }
+
+        const stickerIndex = row * 3 + col;
+        if (!positions.has(stickerIndex)) return;
+
+        // Add highlight edge to this face
+        this.addHighlightToCubieFace(cubie.mesh, config.faceIndex);
+      });
+    });
+  }
+
+  private addHighlightToCubieFace(mesh: THREE.Mesh, faceIndex: number): void {
+    const geometry = mesh.geometry as THREE.BoxGeometry;
+    
+    // Get the face normal and position offset
+    const faceNormals = [
+      new THREE.Vector3(1, 0, 0),   // R
+      new THREE.Vector3(-1, 0, 0),  // L
+      new THREE.Vector3(0, 1, 0),   // U
+      new THREE.Vector3(0, -1, 0),  // D
+      new THREE.Vector3(0, 0, 1),   // F
+      new THREE.Vector3(0, 0, -1),  // B
+    ];
+
+    const normal = faceNormals[faceIndex];
+    const size = (CUBIE_SIZE - GAP) / 2 + 0.001;
+    
+    // Create a small square edge geometry on the face
+    const edgeGeometry = new THREE.BufferGeometry();
+    const offset = normal.clone().multiplyScalar(size);
+    
+    // Create a square on the face
+    const halfSize = (CUBIE_SIZE - GAP) / 2 * 0.85;
+    let v1: THREE.Vector3, v2: THREE.Vector3, v3: THREE.Vector3, v4: THREE.Vector3;
+    
+    if (Math.abs(normal.x) > 0.5) {
+      // X-facing (R or L)
+      v1 = new THREE.Vector3(0, -halfSize, -halfSize);
+      v2 = new THREE.Vector3(0, halfSize, -halfSize);
+      v3 = new THREE.Vector3(0, halfSize, halfSize);
+      v4 = new THREE.Vector3(0, -halfSize, halfSize);
+    } else if (Math.abs(normal.y) > 0.5) {
+      // Y-facing (U or D)
+      v1 = new THREE.Vector3(-halfSize, 0, -halfSize);
+      v2 = new THREE.Vector3(halfSize, 0, -halfSize);
+      v3 = new THREE.Vector3(halfSize, 0, halfSize);
+      v4 = new THREE.Vector3(-halfSize, 0, halfSize);
+    } else {
+      // Z-facing (F or B)
+      v1 = new THREE.Vector3(-halfSize, -halfSize, 0);
+      v2 = new THREE.Vector3(halfSize, -halfSize, 0);
+      v3 = new THREE.Vector3(halfSize, halfSize, 0);
+      v4 = new THREE.Vector3(-halfSize, halfSize, 0);
+    }
+
+    const vertices = new Float32Array([
+      v1.x + offset.x, v1.y + offset.y, v1.z + offset.z,
+      v2.x + offset.x, v2.y + offset.y, v2.z + offset.z,
+      v2.x + offset.x, v2.y + offset.y, v2.z + offset.z,
+      v3.x + offset.x, v3.y + offset.y, v3.z + offset.z,
+      v3.x + offset.x, v3.y + offset.y, v3.z + offset.z,
+      v4.x + offset.x, v4.y + offset.y, v4.z + offset.z,
+      v4.x + offset.x, v4.y + offset.y, v4.z + offset.z,
+      v1.x + offset.x, v1.y + offset.y, v1.z + offset.z,
+    ]);
+
+    edgeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    
+    const material = new THREE.LineBasicMaterial({
+      color: 0x00ffff,
+      linewidth: 2,
+    });
+
+    const lineSegments = new THREE.LineSegments(edgeGeometry, material);
+    
+    // Add as child of mesh so it rotates with the cubie
+    mesh.add(lineSegments);
+    this.highlightEdges.push({ mesh, edge: lineSegments });
+  }
+
   // Dispose
   dispose(): void {
     this.cubies.forEach(cubie => {
       cubie.mesh.geometry.dispose();
       (cubie.mesh.material as THREE.Material[]).forEach(m => m.dispose());
     });
+    this.highlightEdges.forEach(({ mesh, edge }) => {
+      mesh.remove(edge);
+      edge.geometry.dispose();
+      (edge.material as THREE.Material).dispose();
+    });
+    this.highlightEdges = [];
     this.renderer.dispose();
   }
 }

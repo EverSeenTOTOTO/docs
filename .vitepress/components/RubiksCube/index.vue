@@ -3,6 +3,7 @@ import { useData } from 'vitepress';
 import { computed } from 'vue';
 import ReactWrap from '../ReactWrap.vue';
 import RubiksCubeReact from './RubiksCube';
+import type { HighlightConfig } from './types';
 
 const { isDark } = useData()
 const bg = computed(() => isDark.value ? '#2a8148' : '#c6f1d5');
@@ -10,6 +11,7 @@ const bg = computed(() => isDark.value ? '#2a8148' : '#c6f1d5');
 const props = defineProps<{
   defaultValue?: string;
   modelValue?: string;
+  highlights?: HighlightConfig[];
 }>();
 
 const emit = defineEmits<{
@@ -21,6 +23,7 @@ const App = () => {
     <RubiksCubeReact
       defaultValue={props.defaultValue}
       value={props.modelValue}
+      highlights={props.highlights}
       onChange={(state: string) => emit('update:modelValue', state)}
     />
   );

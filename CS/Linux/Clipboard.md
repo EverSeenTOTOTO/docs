@@ -1,10 +1,11 @@
 # Clipboard
 
-在Neovim、Tmux和系统剪贴板之间复制粘贴，考虑Mac、Linux及Linux下X11和Wayland的差异（借助`pbcopy`、`xclip`和`wl-copy`）。Nvim 的Clipboard Provider其实内置有对它们的支持，但是没搞明白怎么同时支持系统剪贴板和tmux，索性自定义一下：
+在Neovim、Tmux和系统剪贴板之间复制粘贴，考虑Mac、Linux及Linux下X11和Wayland的差异（借助`pbcopy`、`xclip`和`wl-copy`）。Nvim 的Clipboard Provider其实内置有对它们的支持，但是没搞明白怎么同时支持系统剪贴板和tmux，索性笨办法自定义一下：
 
 ## Neovim
 
 ```lua
+-- clipboard
 local function setup_clipboard()
   local has_mac = vim.fn.has('mac') == 1
   local has_wsl = vim.fn.has('wsl') == 1 or vim.fn.executable('clip.exe') == 1
@@ -12,59 +13,75 @@ local function setup_clipboard()
   local has_wayland = vim.env.WAYLAND_DISPLAY ~= nil and vim.fn.executable('wl-copy') == 1
   local has_tmux = vim.env.TMUX ~= nil
 
-  vim.opt.clipboard = 'unnamedplus'
+  -- GUI 环境：有系统剪贴板工具
+  local has_gui_clipboard = has_mac or has_wsl or has_x11 or has_wayland
 
-  -- 如果没有外部工具，使用 nvim 默认剪贴板
-  local has_external_clipboard = has_mac or has_wsl or has_x11 or has_wayland
-  if not has_external_clipboard then return end
-
-  vim.g.clipboard = {
-    name = 'custom',
-    copy = {
-      ['+'] = function(lines)
-        local text = table.concat(lines, '\n')
-
-        -- 复制到系统剪贴板
-        if has_mac then
-          vim.fn.system('pbcopy', text)
-        elseif has_wayland then
-          vim.fn.system('wl-copy', text)
-        elseif has_x11 then
-          vim.fn.system('xclip -i -sel c', text)
-        elseif has_wsl then
-          vim.fn.system('clip.exe', text)
-        end
-
-        -- 同步到 tmux
-        if has_tmux then vim.fn.system('tmux set-buffer -- ' .. vim.fn.shellescape(text)) end
-      end,
-      ['*'] = function(lines) vim.g.clipboard.copy['+'](lines) end,
-    },
-    paste = {
-      ['+'] = function()
-        local text = ''
-        if has_mac then
-          text = vim.fn.system('reattach-to-user-namespace pbpaste')
-        elseif has_wayland then
-          text = vim.fn.system('wl-paste --no-newline')
-        elseif has_x11 then
-          text = vim.fn.system('xclip -o -sel c')
-        elseif has_wsl then
-          -- 使用 powershell.exe 并去除 Windows 换行符
-          text = vim.fn.system('powershell.exe -NoProfile -Command "Get-Clipboard"')
-          -- 去除 ^M (CR) 字符
-          text = text:gsub('\r\n', '\n'):gsub('\r', '')
-        end
-
-        -- ssh session
-        if has_tmux and vim.env.XDG_SESSION_TYPE == 'tty' then text = vim.fn.system('tmux show-buffer') end
-
-        return vim.split(text, '\n')
-      end,
-      ['*'] = function() return vim.g.clipboard.paste['+']() end,
-    },
-    cache_enabled = 0,
-  }
+  -- 情况1：GUI 环境 - 系统剪贴板/tmux/nvim 互通
+  if has_gui_clipboard then
+    vim.opt.clipboard = 'unnamedplus'
+    vim.g.clipboard = {
+      name = 'custom',
+      copy = {
+        ['+'] = function(lines)
+          local text = table.concat(lines, '\n')
+          -- 复制到系统剪贴板
+          if has_mac then
+            vim.fn.system('pbcopy', text)
+          elseif has_wayland then
+            vim.fn.system('wl-copy', text)
+          elseif has_x11 then
+            vim.fn.system('xclip -i -sel c', text)
+          elseif has_wsl then
+            vim.fn.system('clip.exe', text)
+          end
+          -- 同步到 tmux（如果有）
+          if has_tmux then vim.fn.system('tmux set-buffer -- ' .. vim.fn.shellescape(text)) end
+        end,
+        ['*'] = function(lines) vim.g.clipboard.copy['+'](lines) end,
+      },
+      paste = {
+        ['+'] = function()
+          local text = ''
+          if has_mac then
+            text = vim.fn.system('reattach-to-user-namespace pbpaste')
+          elseif has_wayland then
+            text = vim.fn.system('wl-paste --no-newline')
+          elseif has_x11 then
+            text = vim.fn.system('xclip -o -sel c')
+          elseif has_wsl then
+            text = vim.fn.system('powershell.exe -NoProfile -Command "Get-Clipboard"')
+            text = text:gsub('\r\n', '\n'):gsub('\r', '')
+          end
+          return vim.split(text, '\n')
+        end,
+        ['*'] = function() return vim.g.clipboard.paste['+']() end,
+      },
+      cache_enabled = 0,
+    }
+  -- 情况2：终端无 GUI + tmux - tmux/nvim 互通
+  elseif has_tmux then
+    vim.opt.clipboard = 'unnamedplus'
+    vim.g.clipboard = {
+      name = 'tmux',
+      copy = {
+        ['+'] = function(lines)
+          local text = table.concat(lines, '\n')
+          vim.fn.system('tmux set-buffer -- ' .. vim.fn.shellescape(text))
+        end,
+        ['*'] = function(lines) vim.g.clipboard.copy['+'](lines) end,
+      },
+      paste = {
+        ['+'] = function()
+          local text = vim.fn.system('tmux show-buffer')
+          return vim.split(text, '\n')
+        end,
+        ['*'] = function() return vim.g.clipboard.paste['+']() end,
+      },
+      cache_enabled = 0,
+    }
+    -- 情况3：无任何外部工具
+    -- 不设置 clipboard，让 nvim 使用默认行为（内部寄存器正常工作）
+  end
 end
 
 setup_clipboard()
