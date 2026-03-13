@@ -56,3 +56,4 @@
 * There are two ways of constructing a software design: One way is to make it so simple that there are obviously no deficiencies and the other way is to make it so complicated that there are no obvious deficiencies. The first method is far more difficult.
 * Perfection is reached, not when there is no longer anything to add, but when there is no longer anything to take away.
 * 精神濒临崩溃的症状之一，就是相信自己的工作非常重要。
+* 时间是唯一不可再生的资源。AI 大模型是目前我所知的最便宜的赚取额外时间的方式。
