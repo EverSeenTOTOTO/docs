@@ -59,7 +59,8 @@
 }
 
 .Layout .VPSidebar:not(.open) {
-  padding: var(--vp-nav-height) 0 96px;
+  margin-block-start: var(--vp-nav-height);
+  padding-block: 0 96px;
 }
 
 .Layout .VPSidebar .group {
@@ -67,18 +68,26 @@
   padding: 0;
 }
 
+.Layout .VPNavBar:not(.home) {
+  background-color: var(--vp-nav-bg-color);
+}
+
 @media (min-width: 1440px) {
   .Layout .VPSidebar {
-    width: calc(var(--vp-sidebar-width) + 32px);
+    padding-inline: 24px;
   }
 
   .Layout .VPNavBar.has-sidebar .container > .title {
-    padding-left: 32px;
+    padding-inline: 24px;
     width: calc(var(--vp-sidebar-width) + 32px);
   }
 
   .Layout .VPNavBar.has-sidebar .content {
     padding-left: calc(var(--vp-sidebar-width) + 32px);
+  }
+
+  .Layout .VPNavBarSearch {
+    padding-left: 0;
   }
 }
 
