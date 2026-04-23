@@ -13,12 +13,12 @@
     "react-dom": "^18.3.1",
     "rough-notation": "^0.5.1",
     "three": "^0.182.0",
-    "vue": "^3.5.26"
+    "vue": "^3.5.33"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",
-    "@types/node": "^20.19.30",
-    "@types/react": "^18.3.27",
+    "@types/node": "^20.19.39",
+    "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
     "oxc-minify": "^0.73.2",

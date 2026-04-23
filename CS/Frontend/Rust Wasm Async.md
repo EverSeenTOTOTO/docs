@@ -19,6 +19,8 @@ let resp = web_sys::Response::from(resp_value);
 
 首先，需要对Rust中的异步运行时做一定程度的的介绍。所谓**异步运行时**可以理解为一套能够驱动非阻塞I/O并调度大量任务的逻辑。Rust的标准库并不包含异步运行时，它只提供了一些更基础的设施（比如锁和线程）、`async/await`语法糖和抽象（比如`Future`、`Waker`等）。开发者需要使用这些基础设施，自己去实现各种异步调度执行工作。例如，你可以看看[tokio](https://github.com/tokio-rs/tokio)、[async-std](https://github.com/async-rs/async-std)或者[smol](https://github.com/smol-rs/smol)等库，这些都是社区实现的主流异步运行时，提供了在不同业务场景下的选择。
 
+### `Future`
+
 这里我们提到了`Future`，`Future`可以说是理解Rust异步编程的核心，也是串联应用层实现和语言底层设施的关键桥梁。从本质上说，`Future`只是一个定义了`poll`方法的`trait`（类比Typescript中的接口）：
 
 ```rust
@@ -49,6 +51,10 @@ pub trait Future {
 这时调度器的实现就非常简单了，用一个FIFO的队列来存放任务，每次取队头`poll`一下，如果还在`Pending`就把它丢到队尾，这样我们的两个任务就会依次出现在队头交替执行。
 
 ### 使用“工作窃取”的多线程异步运行时
+
+#### `Waker`
+
+#### `async/await`语法糖
 
 ## 利用 Web 事件循环实现异步运行时
 
