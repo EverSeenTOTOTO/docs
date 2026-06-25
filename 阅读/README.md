@@ -52,8 +52,10 @@
 
   ChatGPT 的用户总是与一个空白文本框进行对抗，通常是空白文本框获胜。
 * 理想的 semver 是 breaking.feat.bugfix，现实的 semver 是 breaking.breaking.breaking。
-* 我们将在1月25日震惊世界。（PayPal CEO）
+* 我们将在1月25日震惊世界。（PayPal CEO，最后无事发生股价暴跌）
 * There are two ways of constructing a software design: One way is to make it so simple that there are obviously no deficiencies and the other way is to make it so complicated that there are no obvious deficiencies. The first method is far more difficult.
 * Perfection is reached, not when there is no longer anything to add, but when there is no longer anything to take away.
 * 精神濒临崩溃的症状之一，就是相信自己的工作非常重要。
 * 时间是唯一不可再生的资源。AI 大模型是目前我所知的最便宜的赚取额外时间的方式。
+* 任何组织在设计一套系统时，所交付的设计方案在结构上都与该组织的沟通结构保持一致。
+  > Conway's law，注意这里指的是开发团队组织而非客户团队

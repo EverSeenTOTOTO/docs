@@ -102,6 +102,29 @@ const RubiksCube = forwardRef<RubiksCubeRef, RubiksCubeProps>(
       onChange?.(sceneRef.current.getState());
     }, [isAnimating, onChange]);
 
+    // 键盘映射：U/D/L/R/F/B（+ M/E/S）= 顺时针；Shift + 键 = 逆时针（'）
+    const executeMoveRef = useRef(executeMove);
+    useEffect(() => {
+      executeMoveRef.current = executeMove;
+    }, [executeMove]);
+
+    useEffect(() => {
+      const onKeyDown = (e: KeyboardEvent) => {
+        const t = e.target as HTMLElement | null;
+        // 在输入框/文本域中打字时不触发
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return; // 不拦截浏览器/系统快捷键
+        const key = e.key;
+        if (!/^[udlrfbmes]$/i.test(key)) return;
+        e.preventDefault();
+        const face = key.toUpperCase() as FaceName;
+        const dir: 1 | -1 = e.shiftKey ? -1 : 1;
+        executeMoveRef.current(face, dir);
+      };
+      window.addEventListener('keydown', onKeyDown);
+      return () => window.removeEventListener('keydown', onKeyDown);
+    }, []);
+
     // Execute multiple moves from string
     const executeMoves = useCallback(async (movesStr: string) => {
       if (!sceneRef.current) return;
@@ -200,6 +223,11 @@ const RubiksCube = forwardRef<RubiksCubeRef, RubiksCubeProps>(
               </button>
             </React.Fragment>
           ))}
+        </div>
+
+        {/* 键盘提示 */}
+        <div style={{ marginTop: '8px', fontSize: '12px', color: '#888', textAlign: 'center' }}>
+          键盘：U D L R F B（+ M E S）= 顺时针 · 按住 Shift = 逆时针（'）
         </div>
 
         {/* Action buttons */}
