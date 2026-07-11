@@ -44,7 +44,7 @@ createRoot(document.body).render(h(App, {depth: 0, count: 0}));
 
 打开性能面板：
 
-<ImageView :src="minePerfV1" />
+<ImageView :src="minePerfV1" mode="fit" />
 
 可以看到脚本执行几乎占满了主线程，期间所有用户交互被阻塞。这是当前实现下，Diff Patch和求值过程都是同步递归执行——一旦开始，必须完成，没法中断进行渲染动作。
 
@@ -73,7 +73,7 @@ createRoot(document.body).render(<App depth={0} count={0} />);
 
 <video src="./react-fiber.mp4" controls />
 
-<ImageView :src="reactPerfPanel" />
+<ImageView :src="reactPerfPanel" mode="fit" />
 
 从性能图中可以看出来，React把一个大任务拆成多个小任务，每个任务执行完毕后释放主线程，让浏览器有机会处理用户交互。这就是React Fiber的核心目标——<Notation type="circle">异步调度</Notation>。
 
@@ -378,7 +378,7 @@ export interface VNodeComponent<T> extends VNodeBase<T, 'component'> {
 
 改造后再次运行性能测试：
 
-<ImageView :src="minePerfV2" />
+<ImageView :src="minePerfV2" mode="fit" />
 
 这个图和React那张性能图就有点“神似”了。长任务被拆分成多个短任务，每个任务执行时间在帧预算内。主线程有空闲响应用户交互。
 
