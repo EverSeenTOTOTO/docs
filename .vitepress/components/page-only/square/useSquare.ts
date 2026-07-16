@@ -23,15 +23,25 @@ const writeUtf8String = (buffer: ArrayBuffer, source: string, alloc: (len: numbe
 };
 
 
+export type Frame = {
+  ra: string;
+  locals: string[];
+  stack: string[];
+};
+
+export type Snapshot = {
+  pc: number;
+  frames: Frame[];
+};
+
 export type Square = {
   compile(sourceAddr: number, size: number): number, // instsAddr
-  dump_instructions(instsAddr: number): void,
+  snapshot_insts(instsAddr: number): bigint,         // packed (ptr<<32)|len
 
   init(): number; // vmAddr
 
   reset(vmAddr: number): void;
-  dump_pc(vmAddr: number): number,
-  dump_callframes(vmAddr: number): void,
+  snapshot(vmAddr: number): bigint,                  // packed (ptr<<32)|len
 
   step(vmAddr: number, instsAddr: number): void;
   run(vmAddr: number, instsAddr: number): void;
@@ -56,17 +66,72 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const instsAddr = ref(-1);
 
   type Write = (message: string) => void;
-
   const termWrite: Write = (message) => terminal.value?.write(message);
-  const stdout = ref<Write>(termWrite);
-  const redirect = (write: Write) => { stdout.value = write; };
+
+  // 调试数据走专用通道：客机 snapshot() 把 VM 状态序列化进线性内存，返 packed 句柄
+  // (ptr<<32)|len。wasm i64 返回值在 JS 里是 BigInt，这里用 BigInt 移位切出 ptr/len（各自
+  // 32 位，Number() 无损），解码成结构化对象后立即 dealloc——与程序 println 输出彻底分离，
+  // 不再像旧 dump_* 那样临时劫持 memory.write。
+  const readU32 = (buf: Uint8Array, off: number) =>
+    (buf[off] | (buf[off + 1] << 8) | (buf[off + 2] << 16) | (buf[off + 3] << 24)) >>> 0;
+
+  const unpack = (handle: bigint) => ({
+    ptr: Number(handle >> BigInt(32)),
+    len: Number(handle & BigInt(0xffffffff)),
+  });
+
+  const readSnapshot = (handle: bigint): Snapshot => {
+    const { ptr, len } = unpack(handle);
+    const buf = new Uint8Array(square.value!.memory.buffer, ptr, len);
+    let o = 0;
+    const readStr = () => {
+      const l = readU32(buf, o); o += 4;
+      const s = utf8Decoder.decode(buf.subarray(o, o + l)); o += l;
+      return s;
+    };
+
+    const pc = readU32(buf, o); o += 4;
+    const nFrames = readU32(buf, o); o += 4;
+    const frames: Frame[] = [];
+    for (let i = 0; i < nFrames; i++) {
+      const ra = readStr();
+      const nLocals = readU32(buf, o); o += 4;
+      const locals: string[] = [];
+      for (let j = 0; j < nLocals; j++) {
+        const k = readStr();
+        const v = readStr();
+        locals.push(`${k}: ${v}`);
+      }
+      const nStack = readU32(buf, o); o += 4;
+      const stack: string[] = [];
+      for (let j = 0; j < nStack; j++) stack.push(readStr());
+      frames.push({ ra, locals, stack });
+    }
+
+    square.value!.dealloc(ptr, len);
+    return { pc, frames };
+  };
+
+  const snap = (): Snapshot => {
+    const handle = square.value?.snapshot(vmAddr.value);
+    return handle ? readSnapshot(handle) : { pc: 0, frames: [] };
+  };
+
+  const dumpInstructions = (): string[] => {
+    const handle = square.value?.snapshot_insts(instsAddr.value);
+    if (!handle) return [];
+    const { ptr, len } = unpack(handle);
+    const text = readUtf8String(square.value!.memory.buffer, ptr, len);
+    square.value!.dealloc(ptr, len);
+    return text.split('\n');
+  };
 
   init({
     memory: {
       write: (offset: number, length: number) => {
         const message = readUtf8String(square.value!.memory.buffer, offset, length);
 
-        stdout.value?.(message);
+        termWrite(message);
       },
     },
     // 客机不再依赖 JSPI：sleep/defer 改为「id → wake_by_id」模型。
@@ -92,41 +157,15 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     } as SquareWasmExports;
 
     vmAddr.value = square.value.init();
-    callframes.value = dump_callframes();
+    callframes.value = snap().frames;
     console.log(`VM address: ${vmAddr.value}`);
   })
     .catch(console.error);
 
-  const dump_instructions = () => {
-    if (instsAddr.value < 0) return [];
-
-    const instructions: string[] = [];
-    const write = (message: string) => instructions.push(message);
-
-    redirect(write);
-    square.value?.dump_instructions(instsAddr.value);
-    redirect(termWrite)
-
-    return instructions.join('').split('\n').filter(Boolean);
-  }
-
-  const dump_callframes = () => {
-    if (vmAddr.value < 0) return [];
-
-    const callframes: string[] = [];
-    const write = (message: string) => callframes.push(message);
-
-    redirect(write);
-    square.value?.dump_callframes(vmAddr.value);
-    redirect(termWrite)
-
-    return callframes.join('').split('\n').filter(Boolean);
-  }
-
   const oldPc = ref(0);
   const pc = ref(0);
   const instructions = ref<string[]>([]);
-  const callframes = ref<string[]>([]);
+  const callframes = ref<Frame[]>([]);
 
   return {
     oldPc,
@@ -140,7 +179,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
       const { addr, len } = writeUtf8String(square.value!.memory.buffer, editor.value!.toString(), square.value!.alloc);
 
       instsAddr.value = square.value?.compile(addr, len) || -1;
-      instructions.value = dump_instructions();
+      instructions.value = dumpInstructions();
       square.value?.dealloc(addr, len);
       terminal.value?.clear();
     },
@@ -149,9 +188,10 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
       if (disabled.value) return;
 
       square.value?.step(vmAddr.value, instsAddr.value);
+      const snapshot = snap();
       oldPc.value = pc.value;
-      pc.value = square.value?.dump_pc(vmAddr.value) || 0;
-      callframes.value = dump_callframes();
+      pc.value = snapshot.pc;
+      callframes.value = snapshot.frames;
     },
 
     run() {
@@ -159,9 +199,10 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
 
       this.compile();
       square.value?.run(vmAddr.value, instsAddr.value);
+      const snapshot = snap();
       oldPc.value = pc.value;
-      pc.value = square.value?.dump_pc(vmAddr.value) || 0;
-      callframes.value = dump_callframes();
+      pc.value = snapshot.pc;
+      callframes.value = snapshot.frames;
     },
 
     reset() {
@@ -171,7 +212,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
       pc.value = 0;
       instsAddr.value = -1;
       instructions.value = [];
-      callframes.value = dump_callframes();
+      callframes.value = snap().frames;
       terminal.value.clear();
     }
   };

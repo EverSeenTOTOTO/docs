@@ -166,8 +166,12 @@ const step = () => {
         }">{{ `${index}: ${inst}` }}</li>
       </ul>
       <ul class="callframes" ref="callframUL">
-        <li v-for="(callframe, index) in square.callframes.value" :key="index">
-          {{ callframe }}
+        <li v-for="(frame, index) in square.callframes.value" :key="index">
+          <div class="callframe__ra">ra: {{ frame.ra }}</div>
+          <div class="callframe__section">locals:</div>
+          <div v-for="(local, i) in frame.locals" :key="`l${i}`" class="callframe__item">{{ local }}</div>
+          <div class="callframe__section">stack:</div>
+          <div v-for="(value, i) in frame.stack" :key="`s${i}`" class="callframe__item">{{ i }}: {{ value }}</div>
         </li>
       </ul>
     </div>
@@ -242,6 +246,18 @@ const step = () => {
 
       >li {
         white-space: pre;
+
+        & .callframe__ra {
+          font-weight: 600;
+        }
+
+        & .callframe__section {
+          color: var(--vp-c-text-2);
+        }
+
+        & .callframe__item {
+          padding-inline-start: 12px;
+        }
       }
     }
   }
