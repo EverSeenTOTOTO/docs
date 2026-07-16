@@ -35,6 +35,9 @@ export type Square = {
 
   step(vmAddr: number, instsAddr: number): void;
   run(vmAddr: number, instsAddr: number): void;
+
+  // 异步运行时入口：宿主在 setTimeout/queueMicrotask 回调里调它，rewind 恢复被挂起的续延并续跑。
+  wake_by_id(id: number): void;
 };
 
 type SquareWasmExports = {
@@ -45,11 +48,6 @@ type SquareWasmExports = {
   alloc(size: number): number,
   dealloc(ptr: number, size: number): void,
 } & Square;
-
-//@ts-ignore
-WebAssembly.Suspending = WebAssembly.Suspending || class { constructor(fn: unknown) { return fn } }
-//@ts-ignore
-WebAssembly.promising = WebAssembly.promising || function (fn: unknown) { return fn }
 
 export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const disabled = ref(false);
@@ -71,23 +69,26 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
         stdout.value?.(message);
       },
     },
-    js: {
-      //@ts-ignore
-      sleep: new WebAssembly.Suspending((ms: number) => new Promise<void>(resolve => {
+    // 客机不再依赖 JSPI：sleep/defer 改为「id → wake_by_id」模型。
+    // 客机挂起时调 js_sleep(id, ms) / js_queue_microtask(id)，我们在异步回调里调
+    // 导出的 wake_by_id(id) rewind 恢复对应续延并续跑（详见 square/src/runtime.rs）。
+    host: {
+      js_sleep: (id: number, ms: number) => {
         disabled.value = true;
         setTimeout(() => {
           disabled.value = false;
-          resolve();
-        }, ms)
-      }))
+          square.value?.wake_by_id(id);
+        }, ms);
+      },
+      js_queue_microtask: (id: number) => {
+        queueMicrotask(() => square.value?.wake_by_id(id));
+      },
     }
   }).then((instance: WebAssembly.Instance) => {
+    // 不再用 WebAssembly.promising 包 run/step——异步已下放到客机运行时（id → wake_by_id），
+    // run 现在是普通同步导出：内部 spawn 主续延 + tick，任务 park 后即返回。
     square.value = {
       ...instance.exports,
-      //@ts-ignore
-      run: WebAssembly.promising(instance.exports.run),
-      //@ts-ignore
-      step: WebAssembly.promising(instance.exports.step),
     } as SquareWasmExports;
 
     vmAddr.value = square.value.init();
