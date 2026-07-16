@@ -60,7 +60,6 @@ type SquareWasmExports = {
 } & Square;
 
 export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
-  const disabled = ref(false);
   const square = ref<SquareWasmExports>();
   const vmAddr = ref(-1);
   const instsAddr = ref(-1);
@@ -139,9 +138,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     // 导出的 wake_by_id(id) rewind 恢复对应续延并续跑（详见 square/src/runtime.rs）。
     host: {
       js_sleep: (id: number, ms: number) => {
-        disabled.value = true;
         setTimeout(() => {
-          disabled.value = false;
           square.value?.wake_by_id(id);
         }, ms);
       },
@@ -185,8 +182,6 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     },
 
     step() {
-      if (disabled.value) return;
-
       square.value?.step(vmAddr.value, instsAddr.value);
       const snapshot = snap();
       oldPc.value = pc.value;
@@ -195,8 +190,6 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     },
 
     run() {
-      if (disabled.value) return;
-
       this.compile();
       square.value?.run(vmAddr.value, instsAddr.value);
       const snapshot = snap();
@@ -206,7 +199,6 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     },
 
     reset() {
-      disabled.value = false;
       square.value?.reset(vmAddr.value);
       oldPc.value = 0;
       pc.value = 0;
@@ -223,6 +215,7 @@ export const INITIAL_CODE = `[let fib /[n]
     1
     [+ [fib [- n 1]] [fib [- n 2]]]]]
 
+[defer /[] [println 'later']]
 [sleep 1000]
 [println [fib 20]]
 `
