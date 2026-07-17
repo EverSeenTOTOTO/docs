@@ -214,8 +214,9 @@ export const INITIAL_CODE = `[let fib /[n]
   [if [<= n 2] 
     1
     [+ [fib [- n 1]] [fib [- n 2]]]]]
-
-[defer /[] [println 'later']]
+    
 [sleep 1000]
+[defer /[] [println 'later']]
+
 [println [fib 20]]
 `

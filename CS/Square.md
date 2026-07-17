@@ -802,10 +802,17 @@ RUSTFLAGS="-C link-arg=-zstack-size=65536" cargo build --target=wasm32-unknown-u
 (memory (;0;) 2)
 ```
 
-### `sleep`的实现
+### `sleep` 与 `defer` 的实现
 
-`sleep`本质是Web环境的`setTimeout`。但 Square 既没有内置一个异步运行时，也没有和 Web 环境的`Promise`对应的Rust Binding，那它是为什么在 WASM 程序内部表现得像是同步阻塞了一样呢？这是因为背后用到了[JSPI](https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md)。简单来说，JSPI提供了一对API：`WebAssembly.Suspending`和`WebAssembly.promising`，当我们想要在WASM程序内部调用Web环境定义的异步方法`foo`时，可以将导入的`foo`用`WebAssembly.Suspending`包裹，然后将WASM程序导出的、调用`foo`的那个方法用`WebAssembly.promising`包裹。当WASM程序执行到`foo`时会被挂起，直到异步方法`foo`完成才继续执行，并且能够直接拿到异步方法的结果。
+`sleep`、`defer` 对应 Web 环境的 `setTimeout`、`queueMicrotask`。但 WASM 程序一旦开始执行就同步跑到底（trap 除外），无法中途挂起；square 也没有内置异步运行时。它的「挂起」本质也是 **VM 状态保存**——和上文「延续的实现」同一套 unwind/rewind，区别只在于状态由调度器持有、由宿主事件循环驱动恢复。
 
-不过，这个API目前还在测试阶段，Chrome 的话需要在 <chrome://flags/> 里面打开相关配置才可以体验，具体可参考v8[这篇博客](https://v8.dev/blog/jspi)。
+核心参见 `src/runtime.rs`：挂起时客机分配一个整数 `id`，把当前执行流的延续（`UnwindFrame { ra, context }`）登记进一张注册表，并调度宿主异步方法（`js_sleep(id, ms)` / `js_queue_microtask(id)`），随后从本次导出调用返回——控制权交还宿主事件循环，但wasm 实例没销毁，延续冻在线性内存里。宿主到点回调 `wake_by_id(id)`：延续重新入就绪队列，`tick` 把 VM rewind 续跑。
 
-> 其实不使用 JSPI 也能借助 Web 事件循环在 Rust no_std 中构建一个异步运行时，参见[本文](./Snippets/Rust-Wasm-Async.md)。
+- `sleep` 被设计为同步等待`[sleep 1000] [later ...]`，因此需要捕获**外侧续延**（sleep 之后的语句），停止（`park`）当前主任务；
+- `defer` 捕获参数闭包`fn`自身作为延续（一个新任务）`[defer fn] [later ...]`，调度之后继续同步执行`later ...`。
+
+这套「宿主事件循环 + 延续 unwind/rewind」的异步运行时设计（任务、就绪队列、唤醒器等）在 [Rust 与 Wasm 中的异步](./Snippets/Rust-Wasm-Async.md) 里有完整阐述。
+
+::: details 早期的 JSPI 方案（已弃用）
+早期版本用 [JSPI](https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md) 实现：以 `WebAssembly.Suspending` 包裹导入的异步方法、`WebAssembly.promising` 包裹调用它的导出，WASM 执行到该方法时挂起、异步完成后再恢复。但 JSPI 当时仍在测试阶段（Chrome 需开 flag，详见 v8 [这篇博客](https://v8.dev/blog/jspi)），且依赖宿主做 Promise 包装，不如「事件循环 + 续延」纯粹，故弃用。
+:::
