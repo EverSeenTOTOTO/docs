@@ -1,8 +1,11 @@
 {
   "dependencies": {
+    "@chenglou/pretext": "^0.0.8",
+    "@types/stats.js": "^0.17.4",
     "@types/three": "^0.182.0",
     "@vueuse/core": "^10.11.1",
     "@xterm/xterm": "^5.5.0",
+    "cassowary": "^0.0.2",
     "clsx": "^2.1.1",
     "codejar": "^4.3.0",
     "lxgw-wenkai-lite-webfont": "^1.7.0",
@@ -12,6 +15,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "rough-notation": "^0.5.1",
+    "stats.js": "^0.17.0",
     "three": "^0.182.0",
     "vue": "^3.5.33"
   },

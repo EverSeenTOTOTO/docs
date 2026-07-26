@@ -145,6 +145,7 @@ export default defineConfig({
   },
 
   vite: {
+    define: { global: 'globalThis', '__cassowary_parser': 'globalThis.__cassowary_parser' },
     resolve: {
       alias: [
         {
