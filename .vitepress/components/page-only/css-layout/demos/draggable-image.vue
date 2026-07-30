@@ -133,7 +133,7 @@ onBeforeUnmount(() => { dragging = false; cssDragging = false })
             @pointerup="onUp"
           >图片（可拖）</div>
         </div>
-        <p class="note">pretext 算出每行内容和坐标，渲染成绝对定位的 <code>&lt;span&gt;</code>——文字是真正的 DOM，可选中、可访问；圆每行的占用按弧线算，拖到正中间文字分成左右两股绕过。</p>
+        <p class="note">pretext 算出每行内容和坐标，渲染成绝对定位的 <code>&lt;span&gt;</code>——圆每行的占用按弧线算，拖到正中间文字分成左右两股绕过。</p>
       </section>
     </div>
   </div>
