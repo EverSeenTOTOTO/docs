@@ -8,19 +8,19 @@
 
 ### 人生信条/编码哲学
 
-1.  <Notation>事物是普遍联系着的。</Notation>
+1.  <Notation>事物是普遍联系着的。Things are widely connected. </Notation>
 
     与其说“隔行如隔山”，我更宁愿相信“他山之石，可以攻玉”。个人的学习方法也偏向“博观约取，厚积薄发”。优点是善于联想类比、归纳总结，缺点是不善于演绎推理，推陈出新。
 
-2.  <Notation>每个人都是一座孤岛。</Notation>
+2.  <Notation>每个人都是一座孤岛。Everyone is an island. </Notation>
 
     人与人是无法相互理解的，可以试着去理解别人，但不要因为别人无法理解你而生气。接受他人的不痛不痒的问候与异样眼神，时刻反思你是否太过关注自我了，试着从先贤的书中找到那一丝宁静。
 
-3.  <Notation>人们为了避免真正的思考会做任何事。</Notation>
+3.  <Notation>人们为了避免真正的思考会做任何事。There is no expedient to which man will not resort to avoid the real labor of thinking. </Notation>
 
     用无止境的思考代替无止境的争吵，用无止境的探索代替无止境的怀疑。
 
-4.  <Notation>如无必要，勿增实体。</Notation>
+4.  <Notation>如无必要，勿增实体。Entities should not be multiplied beyond necessity. </Notation>
 
     警惕那些人为制造的复杂度（以及制造这些复杂度的人），我们的一生都在与熵增作对抗。在日常中，即使是写demo和草稿也要尽可能认真一点。
 
