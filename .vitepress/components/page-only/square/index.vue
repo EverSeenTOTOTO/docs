@@ -76,7 +76,7 @@ watch(colors, () => {
 
 onMounted(() => {
   import('codejar').then(({ CodeJar }) => {
-    editor.value = CodeJar(editorElement.value!, highlight);
+    editor.value = CodeJar(editorElement.value!, highlight, { addClosing: false });
     editor.value.updateCode(INITIAL_CODE);
   });
 
@@ -144,6 +144,27 @@ const step = () => {
   square.step();
 }
 
+// 可折叠帧卡片：活动帧（最内层，下标最大）默认展开，其余帧默认收起。手动展开的帧记在
+// openFrames，按帧序号索引——每次 step 后帧列表随调用栈位置变化，保留用户选择而非重置。
+const openFrames = ref<Set<number>>(new Set());
+const activeFrameIndex = computed(() => square.callframes.value.length - 1);
+
+const toggleFrame = (index: number) => {
+  const next = new Set(openFrames.value);
+  if (next.has(index)) next.delete(index);
+  else next.add(index);
+  openFrames.value = next;
+};
+
+const expanded = (index: number) =>
+  index === activeFrameIndex.value || openFrames.value.has(index);
+
+// ra 裸数字 → 解析成对应指令文本；越界（如根帧 ra == 指令数）标注 (end)。
+const formatRa = (ra: string) => {
+  const inst = square.instructions.value[Number(ra)];
+  return inst ? `${ra} → ${inst}` : `${ra} (end)`;
+};
+
 </script>
 <template>
   <div class="container">
@@ -166,12 +187,20 @@ const step = () => {
         }">{{ `${index}: ${inst}` }}</li>
       </ul>
       <ul class="callframes" ref="callframUL">
-        <li v-for="(frame, index) in square.callframes.value" :key="index">
-          <div class="callframe__ra">ra: {{ frame.ra }}</div>
-          <div class="callframe__section">locals:</div>
-          <div v-for="(local, i) in frame.locals" :key="`l${i}`" class="callframe__item">{{ local }}</div>
-          <div class="callframe__section">stack:</div>
-          <div v-for="(value, i) in frame.stack" :key="`s${i}`" class="callframe__item">{{ i }}: {{ value }}</div>
+        <li v-for="(frame, index) in square.callframes.value" :key="index" class="callframe"
+          :class="{ 'callframe--active': index === activeFrameIndex }">
+          <button class="callframe__header" type="button" @click="toggleFrame(index)">
+            <span class="callframe__tick">{{ expanded(index) ? '▾' : '▸' }}</span>
+            <span class="callframe__no">#{{ index }}</span>
+            <span class="callframe__ra">ra {{ formatRa(frame.ra) }}</span>
+            <span v-if="index === activeFrameIndex" class="callframe__active">活动</span>
+          </button>
+          <div v-show="expanded(index)" class="callframe__body">
+            <div class="callframe__section">locals:</div>
+            <div v-for="(local, i) in frame.locals" :key="`l${i}`" class="callframe__item">{{ local }}</div>
+            <div class="callframe__section">stack:</div>
+            <div v-for="(value, i) in frame.stack" :key="`s${i}`" class="callframe__item">{{ i }}: {{ value }}</div>
+          </div>
         </li>
       </ul>
     </div>
@@ -244,18 +273,72 @@ const step = () => {
       border-inline-start: 1px solid #ddd;
       padding: 4px;
 
-      >li {
+      .callframe {
         white-space: pre;
+        border-radius: 4px;
+        margin-block: 2px;
 
-        & .callframe__ra {
-          font-weight: 600;
+        &--active {
+          background-color: var(--vp-code-line-highlight-color);
         }
 
-        & .callframe__section {
+        .callframe__header {
+          display: flex;
+          gap: 6px;
+          align-items: baseline;
+          width: 100%;
+          padding: 2px 4px;
+          border: none;
+          border-radius: 4px;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          text-align: start;
+          cursor: pointer;
+
+          &:hover {
+            background-color: var(--vp-c-bg-soft);
+          }
+        }
+
+        .callframe__tick {
+          color: var(--vp-c-text-2);
+          font-size: 0.8em;
+        }
+
+        .callframe__no {
           color: var(--vp-c-text-2);
         }
 
-        & .callframe__item {
+        .callframe__ra {
+          font-weight: 600;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .callframe__active {
+          margin-inline-start: auto;
+          flex-shrink: 0;
+          font-size: 11px;
+          font-weight: 600;
+          line-height: 1;
+          padding: 2px 6px;
+          border-radius: 999px;
+          color: var(--vp-c-brand);
+          background-color: color-mix(in srgb, var(--vp-c-brand) 12%, transparent);
+        }
+
+        .callframe__body {
+          padding: 2px 4px 6px 22px;
+        }
+
+        .callframe__section {
+          color: var(--vp-c-text-2);
+          font-size: 12px;
+        }
+
+        .callframe__item {
           padding-inline-start: 12px;
         }
       }
