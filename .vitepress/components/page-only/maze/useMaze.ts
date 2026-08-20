@@ -254,6 +254,7 @@ const useMazeRun = ({ ints, backup, SIZE, LENGTH, startPos, endPos }) => {
     stepInterval: 1000 / 30,
     onInit() {
       carPos.value = startPos.value;
+      const visited = new Set<number>([startPos.value]);
 
       const go = (target: number, fullPath: number[]) => stack.push(() => {
         if (ints[target] === PATH) return; // already visited
@@ -283,6 +284,8 @@ const useMazeRun = ({ ints, backup, SIZE, LENGTH, startPos, endPos }) => {
         }
 
         neighbors.forEach(neighbor => {
+          if (visited.has(neighbor)) return; // 已入栈/访问过的格子，不再重复入栈
+          visited.add(neighbor);
           stack.push(() => go(neighbor, [...fullPath]));
         })
       })
@@ -304,6 +307,7 @@ const useMazeRun = ({ ints, backup, SIZE, LENGTH, startPos, endPos }) => {
     stepInterval: 1000 / 30,
     onInit() {
       carPos.value = startPos.value;
+      const visited = new Set<number>([startPos.value]);
 
       const go = (target: number, fullPath: number[]) => stack.push(() => {
         if (ints[target] === PATH) return; // already visited
@@ -332,6 +336,8 @@ const useMazeRun = ({ ints, backup, SIZE, LENGTH, startPos, endPos }) => {
         }
 
         neighbors.forEach(neighbor => {
+          if (visited.has(neighbor)) return; // 已入栈/访问过的格子，不再重复入栈
+          visited.add(neighbor);
           stack.push(() => go(neighbor, [...fullPath]));
         })
       })
