@@ -4,7 +4,7 @@
   --vp-font-family-base:"LXGW WenKai Lite", sans-serif;
   --vp-font-family-mono:"LXGW WenKai Mono Lite", sans-serif;
 
-  --vp-layout-max-width: 1520px;
+  --vp-layout-max-width: 100vw;
 
   --vp-c-pointer: rgba(60, 60, 67, 0.6);
 
@@ -24,7 +24,7 @@
 }
 
 .VPDoc.has-aside .content-container {
-  max-width: 880px !important;
+  max-width: min(1200px, 60vw) !important;
 }
 
 .VPNavBarMenuLink:hover {
