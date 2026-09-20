@@ -22,6 +22,13 @@ const writeUtf8String = (buffer: ArrayBuffer, source: string, alloc: (len: numbe
   };
 };
 
+// 宿主辅助：prelude 的 sleep 糖 `[await '__square_sleep' [vec ms]]` 走它拿 Promise
+const g = globalThis as any;
+if (!g.__square_sleep) {
+  g.__square_sleep = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 
 export type Frame = {
   ra: string;
@@ -35,7 +42,7 @@ export type Snapshot = {
 };
 
 export type Square = {
-  compile(sourceAddr: number, size: number): number, // instsAddr
+  compile(sourceAddr: number, size: number): number; // instsAddr；编译失败为 0
   snapshot_insts(instsAddr: number): bigint,         // packed (ptr<<32)|len
 
   init(): number; // vmAddr
@@ -43,11 +50,15 @@ export type Square = {
   reset(vmAddr: number): void;
   snapshot(vmAddr: number): bigint,                  // packed (ptr<<32)|len
 
-  step(vmAddr: number, instsAddr: number): void;
-  run(vmAddr: number, instsAddr: number): void;
+  /** 返回 0 正常；1 出错（文本已写入 memory.write 通道） */
+  step(vmAddr: number, instsAddr: number): number;
+  run(vmAddr: number, instsAddr: number): number;
 
-  // 异步运行时入口：宿主在 setTimeout/queueMicrotask 回调里调它，rewind 恢复被挂起的续延并续跑。
-  wake_by_id(id: number): void;
+  /** 用户代码首指令 pc：prelude 拼接占了前面一截，单步前可先快进 */
+  user_start(): number;
+
+  /** 宿主 → 客机唯一唤醒入口：args 为实参数组 JSON，唤醒 id 对应的挂起任务 */
+  call_cb(id: number, argsPtr: number, argsLen: number): void;
 };
 
 type SquareWasmExports = {
@@ -63,6 +74,8 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const square = ref<SquareWasmExports>();
   const vmAddr = ref(-1);
   const instsAddr = ref(-1);
+  /** prelude 之后、用户代码首指令的 pc；-1 = 尚未编译 */
+  const userStart = ref(-1);
 
   type Write = (message: string) => void;
   const termWrite: Write = (message) => terminal.value?.write(message);
@@ -117,6 +130,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   };
 
   const dumpInstructions = (): string[] => {
+    if (instsAddr.value <= 0) return [];
     const handle = square.value?.snapshot_insts(instsAddr.value);
     if (!handle) return [];
     const { ptr, len } = unpack(handle);
@@ -124,6 +138,59 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
     square.value!.dealloc(ptr, len);
     return text.split('\n');
   };
+
+  // ── JS FFI 桥（与 square 仓库 host.mjs 同构）──────────────────────────────
+  // 客机 [js 'path' [vec ...]] / [await 'path' [vec ...]] 经 host.js_call /
+  // host.js_await_call 进来：按点路径在 globalThis 解析、展开实参调用；
+  // square 闭包以 {"__sq_cb": id} 句柄跨界，这里换成 JS 函数——调用即把实参
+  // JSON 写回线性内存并 call_cb 唤醒对应任务。投递一律 microtask 化：
+  // 同步回调会在 syscall 执行中途重入 VM，await 的同步结果也会赶在 park
+  // 完成前唤醒（tick 会把未 park 的任务当已完成丢弃）。
+  const encoder = new TextEncoder();
+
+  const squareCallback = (a: any) => {
+    if (a && typeof a === 'object' && !Array.isArray(a) && '__sq_cb' in a) {
+      const id = a.__sq_cb;
+      return (...as: any[]) => queueMicrotask(() => sendToSquare(id, as));
+    }
+    return a;
+  };
+
+  const sendToSquare = (id: number, args: unknown[]) => {
+    const bytes = encoder.encode(JSON.stringify(args ?? []));
+    const ptr = square.value!.alloc(bytes.length);
+    new Uint8Array(square.value!.memory.buffer, ptr, bytes.length).set(bytes);
+    square.value!.call_cb(id, ptr, bytes.length);
+  };
+
+  const packResult = (result: unknown) => {
+    let json: string;
+    try {
+      json = JSON.stringify(result);
+    } catch {
+      json = 'null';
+    }
+    const bytes = encoder.encode(json);
+    const ptr = square.value!.alloc(bytes.length);
+    new Uint8Array(square.value!.memory.buffer, ptr, bytes.length).set(bytes);
+    return (BigInt(ptr) << 32n) | BigInt(bytes.length);
+  };
+
+  /** 解析点路径并保留父对象作接收者（Promise.reject 等需要 this） */
+  const resolvePath = (name: string) => {
+    let parent = globalThis;
+    let resolved: any = globalThis;
+    for (const k of name.split('.')) {
+      parent = resolved;
+      resolved = resolved?.[k];
+    }
+    return { parent, resolved };
+  };
+
+  const readCallArgs = (ptr: number, len: number) =>
+    JSON.parse(
+      readUtf8String(square.value!.memory.buffer, ptr, len),
+    ).map(squareCallback);
 
   init({
     memory: {
@@ -133,22 +200,55 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
         termWrite(message);
       },
     },
-    // 客机不再依赖 JSPI：sleep/defer 改为「id → wake_by_id」模型。
-    // 客机挂起时调 js_sleep(id, ms) / js_queue_microtask(id)，我们在异步回调里调
-    // 导出的 wake_by_id(id) rewind 恢复对应续延并续跑（详见 square/src/runtime.rs）。
     host: {
-      js_sleep: (id: number, ms: number) => {
-        setTimeout(() => {
-          square.value?.wake_by_id(id);
-        }, ms);
+      // 同步 FFI：结果 JSON 写回线性内存返 packed 句柄；宿主异常以 {__sq_err} 回传
+      // （客机转语言级错误，try 可捕获）
+      js_call: (name_ptr: number, name_len: number, args_ptr: number, args_len: number) => {
+        const name = readUtf8String(square.value!.memory.buffer, name_ptr, name_len);
+        const args = readCallArgs(args_ptr, args_len);
+        const { parent, resolved } = resolvePath(name);
+        if (typeof resolved !== 'function') {
+          return packResult(resolved === undefined ? null : resolved);
+        }
+        let result;
+        try {
+          result = resolved.apply(parent, args);
+        } catch (e) {
+          return packResult({ __sq_err: String(e) });
+        }
+        if (result === undefined) return 0n;
+        return packResult(result);
       },
-      js_queue_microtask: (id: number) => {
-        queueMicrotask(() => square.value?.wake_by_id(id));
+      // await 形态：Promise 则 .then/.catch，同步值/异常 microtask 化立即回调
+      js_await_call: (name_ptr: number, name_len: number, args_ptr: number, args_len: number, cb_id: number) => {
+        const name = readUtf8String(square.value!.memory.buffer, name_ptr, name_len);
+        const args = readCallArgs(args_ptr, args_len);
+        const { parent, resolved } = resolvePath(name);
+        if (typeof resolved !== 'function') {
+          const v = resolved;
+          queueMicrotask(() => sendToSquare(cb_id, v === undefined ? [] : [v]));
+          return;
+        }
+        let result;
+        try {
+          result = resolved.apply(parent, args);
+        } catch (e) {
+          const err = String(e);
+          queueMicrotask(() => sendToSquare(cb_id, [{ __sq_err: err }]));
+          return;
+        }
+        if (result && typeof result.then === 'function') {
+          result.then(
+            (v: unknown) => sendToSquare(cb_id, [v]),
+            (e: unknown) => sendToSquare(cb_id, [{ __sq_err: String(e) }]),
+          );
+        } else {
+          const v = result;
+          queueMicrotask(() => sendToSquare(cb_id, v === undefined ? [] : [v]));
+        }
       },
     }
   }).then((instance: WebAssembly.Instance) => {
-    // 不再用 WebAssembly.promising 包 run/step——异步已下放到客机运行时（id → wake_by_id），
-    // run 现在是普通同步导出：内部 spawn 主续延 + tick，任务 park 后即返回。
     square.value = {
       ...instance.exports,
     } as SquareWasmExports;
@@ -164,6 +264,25 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   const instructions = ref<string[]>([]);
   const callframes = ref<Frame[]>([]);
 
+  /** prelude 是编译期拼接的固定前缀（三百来条指令），单步交互前静默快进 */
+  const fastForwardPrelude = () => {
+    const target = square.value?.user_start() ?? -1;
+    let last = -1;
+    while (pc.value < target && pc.value !== last) {
+      last = pc.value;
+      stepOnce();
+    }
+  };
+
+  const stepOnce = () => {
+    const status = square.value?.step(vmAddr.value, instsAddr.value) ?? 0;
+    const snapshot = snap();
+    oldPc.value = pc.value;
+    pc.value = snapshot.pc;
+    callframes.value = snapshot.frames;
+    return status;
+  };
+
   return {
     oldPc,
     pc,
@@ -176,21 +295,24 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
       const { addr, len } = writeUtf8String(square.value!.memory.buffer, editor.value!.toString(), square.value!.alloc);
 
       instsAddr.value = square.value?.compile(addr, len) || -1;
+      userStart.value = instsAddr.value > 0 ? (square.value?.user_start() ?? -1) : -1;
       instructions.value = dumpInstructions();
       square.value?.dealloc(addr, len);
       terminal.value?.clear();
     },
 
     step() {
-      square.value?.step(vmAddr.value, instsAddr.value);
-      const snapshot = snap();
-      oldPc.value = pc.value;
-      pc.value = snapshot.pc;
-      callframes.value = snapshot.frames;
+      if (instsAddr.value <= 0) return;
+      if (pc.value < userStart.value) {
+        fastForwardPrelude();
+        return;
+      }
+      stepOnce();
     },
 
     run() {
       this.compile();
+      if (instsAddr.value <= 0) return;
       square.value?.run(vmAddr.value, instsAddr.value);
       const snapshot = snap();
       oldPc.value = pc.value;
@@ -203,6 +325,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
       oldPc.value = 0;
       pc.value = 0;
       instsAddr.value = -1;
+      userStart.value = -1;
       instructions.value = [];
       callframes.value = snap().frames;
       terminal.value.clear();
@@ -210,13 +333,15 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   };
 }
 
-export const INITIAL_CODE = `[let fib /[n] 
-  [if [<= n 2] 
+export const INITIAL_CODE = `[let fib /[n]
+  [if [<= n 2]
     1
     [+ [fib [- n 1]] [fib [- n 2]]]]]
-    
-[sleep 1000]
-[defer /[] [println 'later']]
 
 [println [fib 20]]
+
+[sleep 500]
+[defer /[] [println 'later']]
+
+[println [try [js 'JSON.stringify' [vec [vec 1 2]]] /[e] e]]
 `
