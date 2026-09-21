@@ -805,7 +805,7 @@ RUSTFLAGS="-C link-arg=-zstack-size=65536" cargo build --target=wasm32-unknown-u
 
 至于「挂起」本身，它还是 **VM 状态保存**——和上文「延续的实现」同一套 unwind/rewind，区别只在于状态由调度器持有、由宿主事件循环驱动恢复：任务就是一段`UnwindFrame`快照（连同活动的 try handler 栈一起快照，任务交错时各自的 try 域互不串扰），`tick`把队头任务的快照 rewind 回 VM 续跑到下一个 park 或完成。调试这套东西时挖出过三个颇有普遍价值的 bug——哨兵 ra 覆盖了恢复中闭包帧的活返回地址、闭包任务的 ra 默认值引发“从程序头重跑”的级联、同步投递赶在 park 完成之前——都记在仓库的 OPTIMIZATION.md 里了。
 
-这套「宿主事件循环 + 延续 unwind/rewind」的异步运行时设计（任务、就绪队列、唤醒器等）在 [Rust 与 Wasm 中的异步](./Snippets/Rust-Wasm-Async.md) 里有完整阐述。
+这套「宿主事件循环 + 延续 unwind/rewind」的异步运行时设计（任务、就绪队列、宿主事件循环驱动等）在 [Rust 与 Wasm 中的异步](./Snippets/Rust-Wasm-Async.md) 里有完整阐述；square 相对那套`Future`/`Waker`模型的取舍（续延快照代替状态机、`call_cb`合一唤醒）也记在了那篇文章的末节。
 
 ::: details 早期的 JSPI 方案（已弃用）
 早期版本用 [JSPI](https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md) 实现：以 `WebAssembly.Suspending` 包裹导入的异步方法、`WebAssembly.promising` 包裹调用它的导出，WASM 执行到该方法时挂起、异步完成后再恢复。但 JSPI 当时仍在测试阶段（Chrome 需开 flag，详见 v8 [这篇博客](https://v8.dev/blog/jspi)），且依赖宿主做 Promise 包装，不如「事件循环 + 续延」纯粹，故弃用。
