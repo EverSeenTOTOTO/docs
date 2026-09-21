@@ -18,7 +18,7 @@ import SquarePlayground from '@vp/page-only/square/index.vue'
 
 > CISC vs RISC
 
-一般取舍之后，我还是复用了Rust的`Vec`和`HashMap`等基础设施，最终的指令集中有一些抽象层次较高的指令如`PUSH_CLOSURE`，`PACK`，`PEEK`等。
+一般取舍之后，我还是复用了Rust的`Vec`和`HashMap`等基础设施，最终的指令集中有一些抽象层次较高的指令如`PUSH_CLOSURE`，`PACK`，`PEEK`等。后来做性能优化时又在这层抽象上叠了超指令融合——比如`LOADC_JNE`把“取局部、压立即数、比较、条件跳转”整条循环条件折叠成一条指令——思路倒是一脉相承：对堆栈机而言，派发次数比指令条数更贵。
 
 指令设计另一个点是“持久化”的能力。因为我希望生成的指令可以以文件的形式保存下来，未来转译为二进制文件能直接解读指令执行，而不用再次编译源码。这意味着设计时思路要清晰，理清楚哪些是运行时状态，哪些是编译期状态。举个例子，为了方便变量和参数赋值我设计了类似JS那样的展开赋值语法，下面这段代码，`x`将被赋值为2，`y`将被赋值为5：
 
@@ -35,18 +35,21 @@ import SquarePlayground from '@vp/page-only/square/index.vue'
 
 ## 作用域的处理
 
-一个明显的观察是，整个代码块都可以组织为函数调用，所谓“全局变量”不过是程序最外层（虚拟机启动时默认创建）的一个隐性调用帧中的局部变量，而类似`{}`、`if {} else {}`等作用域块也可以解读为立即执行函数，因此只要处理好闭包调用和变量定义、访问与捕获，虚拟机设计会大大简化。当然，这种设计也有缺点，对于“立即执行”的作用域函数，它原本可以不捕获而直接在前序调用帧查找变量的，现在要额外创建一个调用帧并捕获一些变量，无疑大幅度增加了运行时开销，但这个问题是可以用CPS转换和尾调用优化的。
+一个明显的观察是，整个代码块都可以组织为函数调用，所谓“全局变量”不过是程序最外层（虚拟机启动时默认创建）的一个隐性调用帧中的局部变量，而类似`{}`、`if {} else {}`等作用域块也可以解读为立即执行函数，因此只要处理好闭包调用和变量定义、访问与捕获，虚拟机设计会大大简化。这套“万物皆函数调用”的统一确实让实现极简，我也确实这么干了很久。当然，缺点当时就看得见：对于“立即执行”的作用域函数，它原本可以不捕获而直接在前序调用帧查找变量的，现在要额外创建一个调用帧并捕获一些变量，无疑大幅度增加了运行时开销，我当时的想法是可以用CPS转换和尾调用优化来解决。
+
+后来做性能优化，逐指令的周期剖析器把这笔账算得明明白白：`CALL`、`LOAD`、`PUSH_CLOSURE`三项占了近七成周期——`if`/`while`/`begin`/`cond`全部编译为“闭包 thunk + 零参立即调用”，分支作用域靠独立调用帧实现，是运行时按名解析的架构性代价。最终的解法比CPS朴素得多：**槽位化**——变量在编译期静态布局到调用帧的槽位数组里，名字解析全部提前到编译期，作用域块直接编译为跳转，thunk整个消失。所以现在的虚拟机里，作用域块不再产生任何调用帧，“整个程序统一为函数调用”退化成一条纯粹的组织原则：全局变量仍然只是根帧的局部变量，仅此而已。
 
 这里给出虚拟机中调用帧的大致定义：
 
 ```rust
 pub struct CallFrame {
-    locals: HashMap<String, Value>, // 局部变量
+    pub slots: Vec<Value>, // 槽位化局部变量（编译期静态布局）；被捕获的槽位以 UpValue 共享单元存储
+    pub ups: Rc<Vec<Rc<RefCell<Value>>>>, // 本帧闭包的 upvalue 单元表（与闭包实例共享同一个 Rc）
+    pub names: Rc<Vec<String>>, // 槽位名表（快照/调试用）
 
-    stack: Vec<Value>, // 操作数栈
-    sp: usize, // stack pointer
-
-    ra: usize, // return address
+    pub stack: Vec<Value>, // 操作数栈
+    pub sp: usize, // fake stack pointer，避免频繁的栈增长判断
+    pub ra: usize, // return address
 }
 ```
 
@@ -58,124 +61,100 @@ pub struct CallFrame {
 
 <Notation type="circle">函数实例化</Notation>发生在运行时，对支持一类函数的语言来说，我们需要创建一个真正存在于内存、能够像常规值一样传来传去的结构（闭包），它至少有两个功能：定位到函数（指令）地址和捕获外部的局部变量；
 
-<Notation type="circle">函数调用</Notation>也在运行时，实际调用的是函数实例（闭包），此时调用帧操作数栈顶应该分别是闭包和打包过的参数，调用过程大体如下，读者可以在上文的 Playground 中编写一个小函数并观察执行过程中指令和调用帧的变换：
+<Notation type="circle">函数调用</Notation>也在运行时，实际调用的是函数实例（闭包），此时调用帧操作数栈顶应该分别是闭包和若干个实参，调用过程大体如下，读者可以在上文的 Playground 中编写一个小函数并观察执行过程中指令和调用帧的变换：
 
-1. 创建新的调用帧，记录当前的`pc`为RA（Return Address）并保存在新调用帧中，将参数推送进新调用帧的操作数栈，旧调用帧操作数栈退栈*2；
+1. 从帧池取一个调用帧复用，记录当前的`pc`为RA（Return Address）并保存在新调用帧中，参数从调用方操作数栈**直接拷贝进被调方的槽位**（早期实现是先把参数打包成一个`Vec`再解包，后来发现这笔中间分配纯属多余），旧调用帧操作数栈退栈 n+1；
 2. 从闭包中取出函数地址并设置给`pc`，继续执行直到函数尾部的`RET`指令；
 3. 从当前调用帧取出RA并重设`pc`；
-4. PUSH当前调用帧数据栈栈顶到上一个栈帧数据栈的顶部作为返回值，然后销毁当前调用帧。
+4. PUSH当前调用帧数据栈栈顶到上一个栈帧数据栈的顶部作为返回值，然后销毁当前调用帧——其实是回收入帧池，`Rc`引用计数为 1（无续延共享）时才连壳复用。
 
-`CALL`指令实现类似这样：
+`CALL`指令中闭包分支的核心实现类似这样：
 
 ```rust
-let params = frame.stack[frame.sp - 1].clone();
-let func = frame.stack[frame.sp - 2].clone();
+let callee_rc = vm.take_frame(); // 帧池复用，CALL 全程零堆分配
+{
+    let mut callee = callee_rc.borrow_mut();
+    bind_params(&mut callee, &info, &caller.stack[sp - n..sp]); // 参数直拷进槽位
+    callee.ups = ups; // upvalue 单元表 Rc 自增
+    callee.ra = vm.pc;
+}
+caller.sp = sp - n - 1;
 
-frame.sp -= 2;
-
-let mut frame = CallFrame::new();
-
-frame.ra = *pc;
-// always push params as first operand
-frame.stack[0] = params;
-frame.sp = 1;
-
-vm.push_frame(frame);
+vm.push_frame(callee_rc);
 
 // jump to function
-*pc = closure.borrow().ip as usize;
+vm.pc = ip;
 ```
 
 `RET`指令实现：
 
 ```rust
-let frame = vm.current_frame();
+let (ra, top) = {
+    let frame = vm.call_frames.last().unwrap().borrow();
+    (frame.ra, frame.top().unwrap_or(&Value::Nil).clone())
+};
 
 // jump back
-*pc = frame.ra;
+vm.pc = ra;
 
-let top = frame.top().unwrap_or(&Value::Nil).clone();
-
-vm.pop_frame();
+if let Some(rc) = vm.pop_frame() {
+    vm.recycle_frame(rc);
+}
 
 // always return the top value
-vm.current_frame().push(top)
+vm.current_frame().borrow_mut().push(top)
 ```
 
 ### 变量捕获、定义与修改的细节
 
 #### 编译阶段
 
-编译阶段的任务是判断哪些变量是当前作用域的局部变量，哪些是待捕获的定义于上层作用域的变量，然后将这些待捕获变量的名字保存到`PUSH_CLOSURE`指令中作为元信息。虚拟机执行到`PUSH_CLOSURE`指令时，将使用这些元信息进行捕获。实现起来也不需要复杂的软件分析，因为从AST上我们可以得知哪些地方是定义变量的，哪些地方是使用变量的，哪些地方开始了一个新的作用域，故只要在指令生成的过程中维护一个作用域栈（注意与运行时的调用帧区分，两者没有什么关联，尽管运作原理相似），生成`STORE`指令的时候记下变量名，就可以在生成`LOAD`指令的时候得知是否需要捕获：
-
-以`if`语句为例，维护作用域栈并记下元信息：
+编译阶段的任务是判断哪些变量是当前作用域的局部变量，哪些是待捕获的定义于上层作用域的变量。实现起来也不需要复杂的软件分析，因为从AST上我们可以得知哪些地方是定义变量的，哪些地方是使用变量的，哪些地方开始了一个新的作用域。旧实现是在指令生成的过程中维护一个作用域栈（注意与运行时的调用帧区分，两者没有什么关联，尽管运作原理相似），生成`STORE`指令的时候记下变量名，捕获以名字的集合保存在`PUSH_CLOSURE`里，运行时一遍遍按字符串哈希查找——是当时的性能顽疾之一。槽位化之后，编译器维护的是一个函数上下文栈（`FnCtx`，注意换成了按**函数**而不是按作用域分界），每个名字在使用处被 resolve 成三种绑定之一：
 
 ```rust
-ctx.borrow_mut().push_scope();
-let condition_result = emit_node(input, condition, ctx)?;
-
-let true_branch = expressions.get(2).unwrap();
-
-// 进入 true 分支作用域
-ctx.borrow_mut().push_scope();
-let true_branch_result = emit_node(input, true_branch, ctx)?;
-//  离开 true 分支作用域，captures 中保存有该作用域需捕获的变量名
-let mut captures = ctx.borrow_mut().pop_scope();
-
-// ...
-
-if let Some(false_branch) = expressions.get(3) {
-    // 进入 false 分支作用域
-    ctx.borrow_mut().push_scope();
-    let false_branch_result = emit_node(input, false_branch, ctx)?;
-    // 离开 false 分支作用域
-    captures.extend(ctx.borrow_mut().pop_scope());
-    // 离开 if 函数体
-    captures.extend(ctx.borrow_mut().pop_scope());
-
-    // ...
-
-    // 生成 PUSH_CLOSURE 指令，并保存待捕获的元信息
-    result.push(Inst::PUSH_CLOSURE(Function::ClosureMeta(
-        -4 - (condition_len + true_branch_len + false_branch_len),
-        captures,
-    )));
+pub enum Binding {
+    Local(u16),   // 当前函数的槽位
+    Upvalue(u16), // 本闭包已注册的第 idx 个捕获
+    Global,       // 全局表（`=` 动态定义）→ 内建 → 未定义报错
 }
 ```
 
-生成`STORE`指令的地方，`is_define`根据语法结构区分定义`define`还是赋值`assign`，是定义的话，将变量名添加到作用域中，是赋值则将变量标记为需捕获：
+名字查找的大致次序：本函数局部 → 本闭包已注册的捕获 → 沿外层函数链找**定义者**：
 
 ```rust
-if is_define {
-    ctx.borrow_mut().add_local(id.clone());
-} else {
-    ctx.borrow_mut().mark_if_capture(id);
-}
+fn resolve(&mut self, name: &str) -> Binding {
+    let last = self.fns.len() - 1;
+    if let Some(slot) = self.fns[last].lookup_local(name) {
+        return Binding::Local(slot);
+    }
+    if let Some(idx) = self.fns[last].upvalues.iter().position(|(n, _)| n == name) {
+        return Binding::Upvalue(idx as u16);
+    }
 
-insts.push(Inst::STORE(id.clone()));
-```
-
-生成`LOAD`指令的地方同理：
-
-```rust
-ctx.borrow_mut().mark_if_capture(id);
-return Ok(vec![Inst::LOAD(id.clone())]);
-```
-
-`mark_if_capture`有个注意点，当一个变量被标记待捕获时，从当前作用域一直上溯到该变量定义处之间的所有作用域都需要标记待捕获该变量：
-
-```rust
-pub fn mark_if_capture(&mut self, name: &String) {
-    // once a value is captured, it will be captured in all upper scopes until where it is defined
-    for (locals, ref mut captures) in self.scopes.iter_mut().rev() {
-        if !locals.contains(name) {
-            captures.insert(name.clone());
-        } else {
+    // 找定义者：最内层的外层函数，名字或是其局部槽位、或是其 upvalue
+    let mut owner = None;
+    for i in (0..last).rev() {
+        if let Some(slot) = self.fns[i].lookup_local(name) {
+            owner = Some((i, CaptureSrc::Local(slot)));
             break;
         }
+        // ...
     }
+    // ...
 }
 ```
+
+找到定义者后有个关键动作：从定义者到当前函数的**每一层**都要注册传递捕获。这与旧实现`mark_if_capture`沿作用域栈上溯打标记是同一件事，只是标记的对象从“变量名”变成了“来源”——捕获不再按名字，而是按`CaptureSrc`，直接指明捕获的是外层帧的几号槽位，还是外层闭包的第 j 个 upvalue（后者就是传递捕获，Lua 同款，中间层只挂名不展开，不至于层层复制）：
+
+```rust
+pub enum CaptureSrc {
+    Local(u16),   // 外层函数帧的槽位
+    Upvalue(u16), // 外层闭包的第 j 个 upvalue
+    This,         // 方法体引用宿主对象，闭包存入 obj 时由 set/obj 回填
+}
+```
+
+这些元信息连同槽位数量、参数布局一起，保存在`PUSH_CLOSURE`指令携带的`ClosureInfo`里。运行时所有同源闭包实例共享这一份编译期信息（`Rc`），每个实例只自带一份 upvalue 单元表。
 
 #### 闭包创建阶段
 
@@ -212,7 +191,7 @@ console.log(bar())
 
 采取1实现上会简单点，但2的运行时性能更好。Lua采用了2的做法，它将一个捕获变量区分为OPEN和CLOSED两种状态，如果变量被捕获但其所处调用帧还存活，捕获变量的地方看到的只是一个引用（OPEN），按引用捕获也满足了多个闭包捕获同一变量的场景。而当变量作用域因退栈而即将销毁的时候，Lua会将其中被捕获的变量移动到堆上（CLOSED），表现为一个upvalues链表。
 
-然而在Rust中，由于所有权机制的存在，且从前面`CallFrame`定义可以看出我们局部变量`locals`的定义是`HashMap<String, Value>`，是持有值的所有权的，所以要同时在另一个地方创建其引用并不方便，为此我采用了1的做法：首先设计一个`UpValue`类型，通过`Rc<RefCell<T>>`来引用原变量，并在创建闭包的时候将要捕获的变量“升级”为`UpValue`，这个“升级”实际上就是移动到堆的过程：
+然而在Rust中，由于所有权机制的存在，且从前面`CallFrame`定义可以看出我们局部变量槽位是按值持有的`Vec<Value>`，要同时在另一个地方创建其引用并不方便，为此我采用了1的做法：首先设计一个`UpValue`类型，通过`Rc<RefCell<T>>`来引用原变量，并在创建闭包的时候将要捕获的变量“升级”为`UpValue`，这个“升级”实际上就是移动到堆的过程：
 
 ```rust
 #[derive(Debug, Clone)]
@@ -239,25 +218,22 @@ impl Value {
 `PUSH_CLOSURE`就是用来创建闭包的指令，这是其中最核心的捕获变量逻辑：
 
 ```rust
-// upgrade value to captured
-for name in closure.captures.iter().cloned().collect::<Vec<_>>() {
-    if let Some(value) = frame.resolve_local(&name) {
-        let upvalue = value.upgrade();
-
-        closure.capture(&name, &upvalue);
-        frame.insert_local(&name, upvalue.clone());
-    } else {
-        // else undefined yet, if later be defined in same scope,
-        // the value will be updated
-        let upvalue = Value::UpValue(Rc::new(RefCell::new(Value::Nil)));
-
-        closure.capture(&name, &upvalue);
-        frame.insert_local(&name, upvalue.clone());
-    }
-}
+// 无捕获：共享 VM 级空表，零分配
+let ups = if info.captures.is_empty() {
+    vm.empty_ups.clone()
+} else {
+    Rc::new(info.captures.iter().map(|src| match src {
+        // 未升级则原地升级为 UpValue（移动到堆）
+        CaptureSrc::Local(i) => frame.slot_cell(*i),
+        // 传递捕获：直接共享外层闭包的单元
+        CaptureSrc::Upvalue(j) => frame.ups[*j as usize].clone(),
+        // 每个闭包实例独立的 this 单元，存入 obj 时回填
+        CaptureSrc::This => Rc::new(RefCell::new(Value::Nil)),
+    }).collect())
+};
 ```
 
-`else`部分有段注释值得关注，查找变量时如果未找到并不会直接报错，这是因为虚拟机实现了类似JS的“作用域提升”机制。下面这段代码，虽然`fn`创建的时候`x`还没有定义，但当该闭包调用的时候，**同一个作用域**里`x`已经有定义了，所以可以正确的输出`42`：
+顺带一提，旧实现里查找变量未找到并不报错，而是预捕获一个`nil`单元，由此实现了类似JS的“作用域提升”机制。槽位化后这个语义改由“前向引用走全局表”保住：嵌套函数内、定义在使用之后的名字 resolve 为`Global`，顶层的`let`会双写一份到全局表接住它。下面这段代码，虽然`fn`创建的时候`x`还没有定义，但当该闭包调用的时候，**同一个作用域**里`x`已经有定义了，所以可以正确的输出`42`：
 
 ::: code-group
 
@@ -296,62 +272,40 @@ let fn = () => x;
 ```
 :::
 
-回到我们的虚拟机实现，如果执行等价代码，`let fn`那里会生成`PUSH_CLOSURE`指令，此时捕获并升级`x`，它的值是`nil`，而`fn()`执行的时候，也是基于当初捕获的值，和执行时作用域中的`let x = 42`没有任何干系。
+与JS一致，姊妹作用域的`let`不会发布到全局表，这段代码现在会明确报`undefined variable: x`。旧实现这里是静默的`nil`——静默比报错危险得多，这是我少数几次改语义而不是修 bug，改完反倒和JS对齐了。
 
 #### 闭包调用阶段
 
-使用捕获变量的行为与使用当前作用域的局部变量别无二致。进一步想想就会发现，捕获变量、函数参数和局部变量在用法上并无差别，只是存在覆盖关系，函数参数可以理解为函数体开头定义的局部变量，它会覆盖捕获的变量，而函数体中定义的局部变量会进一步覆盖函数参数。所以调用时对捕获变量的处理其实非常简单，只需要在新调用帧投入使用前预先“填充”捕获变量作为局部变量就行了。
-
-修改`CALL`指令的实现，只需添加一行代码，将闭包中捕获的变量预填充到新调用帧作为局部变量：
-
-```rust
-let params = frame.stack[frame.sp - 1].clone();
-let func = frame.stack[frame.sp - 2].clone();
-
-frame.sp -= 2;
-
-let mut frame = CallFrame::new();
-
-frame.ra = *pc;
-// always push params as first operand
-frame.stack[0] = params;
-frame.sp = 1;
-
-// fill up captures
-frame.extend_locals(closure.borrow().upvalues.clone()); // [!code ++]
-
-vm.push_frame(frame);
-
-// jump to function
-*pc = closure.borrow().ip as usize;
-```
+使用捕获变量的行为与使用当前作用域的局部变量别无二致。进一步想想就会发现，捕获变量、函数参数和局部变量在用法上并无差别，只是存在覆盖关系，函数参数可以理解为函数体开头定义的局部变量，它会覆盖捕获的变量，而函数体中定义的局部变量会进一步覆盖函数参数。槽位化之后，调用时对捕获变量的处理简单到了只剩一次`Rc`自增：`ups`就是一份与闭包实例共享的单元表，`bind_params`把参数直拷进槽位，新帧即可投入使用。
 
 作用域内，后续会发生两种情况：
 
-1. 变量定义（可能覆盖捕获变量）：我们用`HashMap`实现`CallFrame`，变量名作为 key，覆盖的时候直接给指定变量名设个新值就行，它会替换掉旧值但不影响旧值自身；
-2. 变量修改：常规变量直接修改即可。对于捕获变量，别忘了，这些捕获变量都是`Rc<RefCell<T>>`，是引用类型，因此对它们的修改可以反馈到其他引用处，也包括实际定义它们的那个作用域。
+1. 变量定义（可能覆盖捕获变量）：定义即占据一个新槽位，替换的是槽位下标处的值，不影响旧值自身，遮蔽是静态事实；
+2. 变量修改：常规槽位直接写即可。对于捕获槽位，别忘了，它们存的是`UpValue(Rc<RefCell<T>>)`共享单元，写穿即可反馈到其他引用处，也包括实际定义它们的那个作用域。
 
-当然，赋值和修改体现在指令上都是`STORE`指令，因此要根据变量是否“升级过”区分下各种情况，参考如下实现：
+体现在指令上，读写都是按槽位下标进行的，被捕获的槽位自动解包/写穿共享单元：
 
 ```rust
-pub fn assign_local(&mut self, name: &str, value: Value) {
-    let new = if let Value::UpValue(upval) = value {
-        upval.borrow().clone()
-    } else {
-        value
-    };
+// 读槽位：捕获槽位解包 UpValue 单元
+pub fn load_slot(&self, i: u16) -> Value {
+    match self.slots.get(i as usize) {
+        Some(Value::UpValue(cell)) => cell.borrow().clone(),
+        Some(v) => v.clone(),
+        None => Value::Nil,
+    }
+}
 
-    if let Some(Value::UpValue(old)) = self.locals.get(name) {
-        *old.borrow_mut() = new;      // 修改捕获变量
+// 写槽位：捕获槽位写穿共享单元，保持捕获的可变性
+pub fn store_slot(&mut self, i: u16, value: Value) {
+    if let Value::UpValue(cell) = &self.slots[i as usize] {
+        *cell.borrow_mut() = value;
     } else {
-        self.insert_local(name, new); // 赋值和修改常规变量
+        self.slots[i as usize] = value;
     }
 }
 ```
 
-之后无论是局部变量还是捕获变量都简化为当前作用域的查找，免去向上游查找变量的过程，也体现了我们将整个程序运行过程统一为函数调用的好处。缺点自不必说，如果一个变量捕获处与定义处相差的层级比较深，中间每一个层级都持有它的一个引用，将大幅度浪费内存空间，而且一遍遍创建捕获变量引用的过程也很耗时，但正如之前所说的，借助CPS转换和尾调用优化，我们可以始终将运行时的调用帧深度控制在个位数，这些缺陷就不再成为性能瓶颈了。
-
-高枕无忧了吗？当前实现还有一个小问题，考虑如下代码：
+不过有个历史包袱值得一提。旧实现按名字在运行时解析，定义和赋值又同是`STORE(name)`指令，于是有这么一个bug，考虑如下代码：
 
 ::: code-group
 
@@ -368,7 +322,7 @@ fn();
 ```
 ```scheme [Square]
 [let fn /[] [begin
-    x ; undefined variable: x
+    x ; 42（前向引用走了全局表，未报错——与 JS 的差异）
     [let x 24]
     x]]
 
@@ -378,21 +332,23 @@ fn();
 ```
 :::
 
-`fn()`内部`x;`语句处，应该报错`x`未定义，但当前的虚拟机实现在指令生成阶段会错误的判断`x`是一个捕获变量，因此执行到此处时`x`是有值的，指向外层的`let x = 42`，随后`let x = 24`便失去了其定义的作用而变成了一个赋值语句（在运行时，它们都是`STORE`指令），错误的修改了外侧的`x`。这里的问题在于变量作用域提升通常还隐含着一个作用域覆盖（提升）的规则：**如果一个变量在作用域中定义了，那么同一个作用域及下游作用域所有使用到该变量的地方始终应该“看到”该定义**。体现在指令生成阶段，即使我们一开始标记了一个变量要被捕获，如果后来发现该变量晚些时候在同一个作用域被定义了，应去掉该标记，这个逻辑在前文所述遇到变量定义生成`STORE`指令并添加变量名到当前作用域的时候生效：
-
-
-```rust
-pub fn add_local(&mut self, name: String) {
-    self.scopes.last_mut().unwrap().0.insert(name); // [!code --]
-    let (ref mut locals, ref mut captures) = self.scopes.last_mut().unwrap(); // [!code ++]
-    captures.remove(&name); // scope shadow // [!code ++]
-    locals.insert(name); // [!code ++]
-}
-```
+`fn()`内部`x;`语句处，JS应该报错`x`未定义，但旧实现在指令生成阶段会错误的判断`x`是一个捕获变量，执行到此处时`x`指向外层的`let x = 42`，随后`let x = 24`便失去了其定义的作用而变成了一个赋值语句，**错误的修改了外侧的`x`**。这里的问题在于变量作用域提升通常还隐含着一个作用域覆盖（提升）的规则：**如果一个变量在作用域中定义了，那么同一个作用域及下游作用域所有使用到该变量的地方始终应该“看到”该定义**。槽位化之后这类bug失去了发生的土壤：定义即新槽位，`[let x 24]`老老实实遮蔽，外层的`x`保持`42`不动。至于第一条`x`读到`42`而不是像JS那样报错——前向引用走全局表是“提升”语义的自然延伸，算语言差异而非缺陷了。
 
 #### 尾调用优化和CPS转换
 
-TODO
+尾调用优化已经实现，且出乎意料地简单。`CALL`派发时看一眼下一条指令是不是`RET`——是则同帧复用：槽位清空后按新闭包布局重排，参数从栈顶逆序弹填（展开参数整包进槽），替换 upvalue 表，`sp`归零，跳转。十万层尾递归只增一个调用帧：
+
+```rust
+if is_tail_call {
+    caller.slots.clear();
+    caller.slots.resize(info.n_slots as usize, Value::Nil);
+    // ... 参数按 ParamLayout 弹填（定参直填 / 展开参数整包）
+    caller.ups = ups;
+    caller.sp = 0;
+}
+```
+
+CPS转换则仍然没有做。它原本是“作用域块即函数”时代的性能救命稻草，如今thunk已拆、尾调用已消，它的重要性降级了——暂时没有强烈的需求，留坑。
 
 ## 对象的实现
 
@@ -401,16 +357,16 @@ TODO
 ```rust
 #[derive(Debug, Clone, PartialEq)]
 pub enum Function {
-    ClosureMeta(i32, HashSet<String>), // compile time, (offset, captures)
-    Closure(usize, HashMap<String, Value>), // runtime, (ip, upvalues)
-    Syscall(&'static str),             // [!code ++]
+    ClosureMeta(Rc<ClosureInfo>), // compile time, PUSH_CLOSURE 的元信息
+    Closure(Rc<ClosureInfo>, usize, Rc<Vec<Rc<RefCell<Value>>>>), // runtime, (info, ip, 共享 upvalue 单元表)
+    Syscall(&'static str),
 }
 
 #[derive(Debug, Clone)]
 pub enum Value {
     Bool(bool),
     Num(f64),
-    Str(String),
+    Str(Rc<str>),
 
     Function(Rc<RefCell<Function>>),
 
@@ -472,7 +428,7 @@ values.insert(
 
 虚拟机中并没有直接实现原型链，但提供了一种类似 JS `Proxy` 的拦截机制，使代理、只读、私有属性，乃至原型链继承都成为可能。
 
-关键在于：点访问 `o.x` 在编译期就脱糖为 `[get o 'x]`，赋值 `o.x = v` 脱糖为 `[set o 'x v]`。也就是说，一切成员访问最终都汇聚到 `get`/`set` 两个系统调用上——只要让它们能识别"代理对象"并改走自定义逻辑，就等于把查找赋值的控制权交给了用户。值得一提的是，早期版本为此专门设过 `GET`/`SET` 两条指令，并靠对象上的 `__get__`/`__set__` 魔法键触发，有点类似运算符重载；后来发现`proxy`更优雅。
+关键在于：点访问 `o.x` 在编译期就脱糖为属性访问，赋值 `o.x = v` 同理，一切成员访问最终都汇聚到 `get`/`set` 两个系统调用上——只要让它们能识别“代理对象”并改走自定义逻辑，就等于把查找赋值的控制权交给了用户。值得一提的是，`GET`/`SET`两条指令兜兜转转又回来了：早期版本靠它们触发对象上的 `__get__`/`__set__` 魔法键，有点类似运算符重载，统一`proxy`时移除；性能优化时发现一切成员访问都汇到syscall太亏，又把它们请了回来——现在是`Obj`的快速直访路径，遇到`Proxy`目标才回退到`get`/`set`内建的拦截逻辑。语义不变，快慢分开。
 
 代理对象由 `proxy` 内置函数创建，同为运行时`Value`的一种：
 
@@ -498,7 +454,7 @@ pub enum Value {
 ```rust
 #[derive(Debug, Clone, PartialEq)]
 pub enum Function {
-    Closure(usize, HashMap<String, Value>), // runtime, (ip, upvalues)
+    Closure(Rc<ClosureInfo>, usize, Rc<Vec<Rc<RefCell<Value>>>>), // runtime, (info, ip, upvalues)
     Syscall(&'static str),             // (name)
     Contiuation(usize, Vec<Rc<RefCell<CallFrame>>>), // (ra, context) // [!code ++]
 }
@@ -601,6 +557,19 @@ Inst::DELIMITER(mindex) => {
     Ok(())
 }
 ```
+
+## 标准库：prelude 与内建的收敛
+
+`map`/`filter`/`fold`这些函数理应是库而不是指令。最直觉的做法是运行时读入一段 prelude 源码、编译、装载进全局表，但这里有个我踩过的坑：闭包值只携带指向指令数组的 ip 下标，而**所有指令必须位于同一个代码空间**（单一`Vec<Inst>`，槽位化架构的基本假设）——prelude 单独编译，装载函数返回后那段指令数组就被释放了，全局闭包的 ip 随即悬垂。所以 prelude 是**编译期拼接**：把 prelude 源码拼在用户源码前面一起编译，DELIMITER 段号、名字表、超指令融合都由同一次`emit()`统一处理。单步调试器也顺带受益：宿主可以查询`user_start()`拿到用户代码首指令的 pc，先把几百条 prelude 快进掉再交互单步。
+
+哪些东西进 prelude、哪些留在内建，判据很朴素：**拿掉它之后，语言本身还能不能把它写出来**。`vec`就是参数包的恒等函数——`/[...]`是纯贪婪占位，不 PEEK、不限元数，整个参数包经编译器注册的`__args`引用，这顺带成了语言的 variadic 形态：
+
+```scheme
+[= vec /[...] __args]
+[= mylist /[a ...] [vec a __args]] ; 定参 + 参数包
+```
+
+`slice`是`at`+`splice`的循环派生（负起点/越界从 panic 收敛为截断/空），`str`是`fold`加`+`的混合拼接（走同一个`Display`，输出与内建版逐字节一致）。剩下的内建都是拆不动的真原语：`print/println`是唯一的宿主IO通道，`at/put/len/splice`是数据访问核心，`substr`是唯一的字符串区间操作（没有字符串索引原语就拆不动它），`typeof/keys/obj/set/get/proxy`构成对象系（`get`/`set`还是`GET`/`SET`指令的回退路径），加上`callcc`、`js`/`await`和libm数学族。有个反面教材值得记一下：我曾以为`[... xs]`能绑定“剩余参数包”，实测它绑的是**末位元素**——`...`是弹性占位而非 rest 收集，`[let [... x] [vec 1 2 42]]`里`x = 42`，想拿整个参数包得用`__args`。
 
 ## 其他
 
@@ -821,17 +790,27 @@ RUSTFLAGS="-C link-arg=-zstack-size=65536" cargo build --target=wasm32-unknown-u
 (memory (;0;) 2)
 ```
 
-### `sleep` 与 `defer` 的实现
+### 异步：await、回调跨界与 call_cb
 
-`sleep`、`defer` 对应 Web 环境的 `setTimeout`、`queueMicrotask`。但 WASM 程序一旦开始执行就同步跑到底（trap 除外），无法中途挂起；square 也没有内置异步运行时。它的「挂起」本质也是 **VM 状态保存**——和上文「延续的实现」同一套 unwind/rewind，区别只在于状态由调度器持有、由宿主事件循环驱动恢复。
+`sleep`、`defer`曾一度是内建，对应 Web 环境的 `setTimeout`、`queueMicrotask`。后来我把整个异步层收敛成两个原语，它们降级成了普通函数——宿主提供 Promise 化的`__square_sleep`，sleep 就是一行：
 
-核心参见 `src/runtime.rs`：挂起时客机分配一个整数 `id`，把当前执行流的延续（`UnwindFrame { ra, context }`）登记进一张注册表，并调度宿主异步方法（`js_sleep(id, ms)` / `js_queue_microtask(id)`），随后从本次导出调用返回——控制权交还宿主事件循环，但wasm 实例没销毁，延续冻在线性内存里。宿主到点回调 `wake_by_id(id)`：延续重新入就绪队列，`tick` 把 VM rewind 续跑。
+```scheme
+[= sleep /[ms] [await '__square_sleep' [vec ms]]]
+[= defer /[f] [js 'queueMicrotask' [vec f]]]
+```
 
-- `sleep` 被设计为同步等待`[sleep 1000] [later ...]`，因此需要捕获**外侧续延**（sleep 之后的语句），停止（`park`）当前主任务；
-- `defer` 捕获参数闭包`fn`自身作为延续（一个新任务）`[defer fn] [later ...]`，调度之后继续同步执行`later ...`。
+两个原语其一是**await**：`[await 'path' [vec args]]`调用宿主函数并 park 等待。参数序列化成 JSON 写进线性内存，经`host.js_await_call`导入交给宿主；宿主解析点路径、展开调用，结果是 Promise 则`.then/.catch`，同步值则 microtask 化立即回调。回调的入口统一是导出的`call_cb(id, ptr, len)`：实参数组 JSON 写回线性内存，唤醒 id 对应的任务，投递的值就是 await 的结果。
+
+其二是**闭包跨界**：square 闭包作为实参传给 JS 时，序列化为`{"__sq_cb": id}`句柄，宿主把它换成 JS 函数——调用它就是一次`call_cb`唤醒。事件/Promise 型 API 天然契合；宿主异常和 Promise 拒绝以`{"__sq_err": msg}`回传，客机转成语言级错误，`try`可以直接捕获。
+
+至于「挂起」本身，它还是 **VM 状态保存**——和上文「延续的实现」同一套 unwind/rewind，区别只在于状态由调度器持有、由宿主事件循环驱动恢复：任务就是一段`UnwindFrame`快照（连同活动的 try handler 栈一起快照，任务交错时各自的 try 域互不串扰），`tick`把队头任务的快照 rewind 回 VM 续跑到下一个 park 或完成。调试这套东西时挖出过三个颇有普遍价值的 bug——哨兵 ra 覆盖了恢复中闭包帧的活返回地址、闭包任务的 ra 默认值引发“从程序头重跑”的级联、同步投递赶在 park 完成之前——都记在仓库的 OPTIMIZATION.md 里了。
 
 这套「宿主事件循环 + 延续 unwind/rewind」的异步运行时设计（任务、就绪队列、唤醒器等）在 [Rust 与 Wasm 中的异步](./Snippets/Rust-Wasm-Async.md) 里有完整阐述。
 
 ::: details 早期的 JSPI 方案（已弃用）
 早期版本用 [JSPI](https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md) 实现：以 `WebAssembly.Suspending` 包裹导入的异步方法、`WebAssembly.promising` 包裹调用它的导出，WASM 执行到该方法时挂起、异步完成后再恢复。但 JSPI 当时仍在测试阶段（Chrome 需开 flag，详见 v8 [这篇博客](https://v8.dev/blog/jspi)），且依赖宿主做 Promise 包装，不如「事件循环 + 续延」纯粹，故弃用。
+:::
+
+::: details 中间的 wake_by_id 方案（也已收敛）
+后来宿主导入是`js_sleep(id, ms)`/`js_queue_microtask(id)`，唤醒走专门的`wake_by_id(id)`。统一为`call_cb`后，“裸唤醒”只是它零实参的特例，而带实参的唤醒让回调传值、await 结果投递共用同一入口——宿主侧的桥接代码因此少了一半。
 :::
