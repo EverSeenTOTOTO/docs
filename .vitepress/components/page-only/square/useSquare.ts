@@ -333,7 +333,11 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   };
 }
 
-export const INITIAL_CODE = `[let fib /[n]
+export const INITIAL_CODE = `; sleep/defer 是异步原语上的普通函数，程序自带定义
+[= sleep /[ms] [await '__square_sleep' [vec ms]]]
+[= defer /[f] [js 'queueMicrotask' [vec f]]]
+
+[let fib /[n]
   [if [<= n 2]
     1
     [+ [fib [- n 1]] [fib [- n 2]]]]]
