@@ -801,7 +801,7 @@ RUSTFLAGS="-C link-arg=-zstack-size=65536" cargo build --target=wasm32-unknown-u
 
 Promise 约定的入口是**await**：`[await 'path' arg1 ...]`（实参散传，vec 值作为单实参即数组）调用宿主函数并 park 等待。参数序列化成 JSON 写进线性内存，经`host.js_await_call`导入交给宿主；宿主解析点路径、展开调用，结果是 Promise 则`.then/.catch`，同步值则 microtask 化立即回调。回调的入口统一是导出的`call_cb(id, ptr, len)`：实参数组 JSON 写回线性内存，唤醒 id 对应的任务，投递的值就是 await 的结果。
 
-回调约定的入口是**promisify**：回调风格宿主函数的 Promise 化——实参里的闭包标记回调位置（写在哪个参数位，唤醒句柄就注入到哪），宿主调用它即以其实参为结果（多实参以 vec 进首参）。标记闭包要带个哑体（`/[] nil`）：`fn -> / expand expr` 会贪婪吞掉后随表达式作 body，不带的话下一个实参会被吞进闭包里——这是个实测踩过的坑。
+回调约定的入口是**promisify**：回调风格宿主函数的 Promise 化——实参里的闭包标记回调位置（写在哪个参数位，唤醒句柄就注入到哪），宿主调用它即以其实参为结果（多实参以 vec 进首参）。标记闭包自然要带个体（`/[] nil`）——按语法 body 本就不可省略，体不会被调用、写 nil 即可；漏写的话下一个实参会顶替成 body，回调位置就悄悄错位了。
 
 其三是**闭包跨界**：square 闭包作为实参传给 JS 时，序列化为`{"__sq_cb": id}`句柄，宿主把它换成 JS 函数——调用它就是一次`call_cb`唤醒。事件/Promise 型 API 天然契合；宿主异常和 Promise 拒绝以`{"__sq_err": msg}`回传，客机转成语言级错误，`try`可以直接捕获。
 
