@@ -792,14 +792,15 @@ RUSTFLAGS="-C link-arg=-zstack-size=65536" cargo build --target=wasm32-unknown-u
 
 ### 异步：await、回调跨界与 call_cb
 
-`sleep`、`defer`曾一度是内建，对应 Web 环境的 `setTimeout`、`queueMicrotask`。后来我把整个异步层收敛成两个原语，它们降级成了普通函数——宿主提供 Promise 化的`__square_sleep`，sleep 就是一行：
+`sleep`、`defer`曾一度是内建，对应 Web 环境的 `setTimeout`、`queueMicrotask`。后来我把整个异步层收敛成两个原语，它们降级成了普通函数——sleep 就是 eval 一个 Promise，宿主无需注册任何 square 专有全局：
 
 ```scheme
-[= sleep /[ms] [await '__square_sleep' [vec ms]]]
-[= defer /[f] [js 'queueMicrotask' [vec f]]]
+[= sleep /[ms]
+  [await 'eval' [+ 'new Promise(r => setTimeout(r, ' [+ [str ms] '))']]]
+[= defer /[f] [js 'queueMicrotask' f]]
 ```
 
-两个原语其一是**await**：`[await 'path' [vec args]]`调用宿主函数并 park 等待。参数序列化成 JSON 写进线性内存，经`host.js_await_call`导入交给宿主；宿主解析点路径、展开调用，结果是 Promise 则`.then/.catch`，同步值则 microtask 化立即回调。回调的入口统一是导出的`call_cb(id, ptr, len)`：实参数组 JSON 写回线性内存，唤醒 id 对应的任务，投递的值就是 await 的结果。
+两个原语其一是**await**：`[await 'path' arg1 ...]`（实参散传，vec 值作为单实参即数组）调用宿主函数并 park 等待。参数序列化成 JSON 写进线性内存，经`host.js_await_call`导入交给宿主；宿主解析点路径、展开调用，结果是 Promise 则`.then/.catch`，同步值则 microtask 化立即回调。回调的入口统一是导出的`call_cb(id, ptr, len)`：实参数组 JSON 写回线性内存，唤醒 id 对应的任务，投递的值就是 await 的结果。
 
 其二是**闭包跨界**：square 闭包作为实参传给 JS 时，序列化为`{"__sq_cb": id}`句柄，宿主把它换成 JS 函数——调用它就是一次`call_cb`唤醒。事件/Promise 型 API 天然契合；宿主异常和 Promise 拒绝以`{"__sq_err": msg}`回传，客机转成语言级错误，`try`可以直接捕获。
 

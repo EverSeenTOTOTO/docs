@@ -22,14 +22,6 @@ const writeUtf8String = (buffer: ArrayBuffer, source: string, alloc: (len: numbe
   };
 };
 
-// 宿主辅助：prelude 的 sleep 糖 `[await '__square_sleep' [vec ms]]` 走它拿 Promise
-const g = globalThis as any;
-if (!g.__square_sleep) {
-  g.__square_sleep = (ms: number) =>
-    new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-
 export type Frame = {
   ra: string;
   locals: string[];
@@ -334,8 +326,9 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
 }
 
 export const INITIAL_CODE = `; sleep/defer 是异步原语上的普通函数，程序自带定义
-[= sleep /[ms] [await '__square_sleep' [vec ms]]]
-[= defer /[f] [js 'queueMicrotask' [vec f]]]
+[= sleep /[ms]
+  [await 'eval' [+ 'new Promise(r => setTimeout(r, ' [+ [str ms] '))']]]
+[= defer /[f] [js 'queueMicrotask' f]]
 
 [let fib /[n]
   [if [<= n 2]
@@ -347,5 +340,5 @@ export const INITIAL_CODE = `; sleep/defer 是异步原语上的普通函数，�
 [sleep 500]
 [defer /[] [println 'later']]
 
-[println [try [js 'JSON.stringify' [vec [vec 1 2]]] /[e] e]]
+[println [try [js 'JSON.stringify' [vec 1 2]] /[e] e]]
 `

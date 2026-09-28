@@ -1079,7 +1079,7 @@ impl Future for YieldNow {
 
 首先是**没有`Future`，也没有`Waker`**。回想 GLM-5.2 那段两层区分：Future 是「停在`.await`点的状态机」。而解释器虚拟机本身就是一个现成的状态机——调用栈、各帧的操作数栈、`pc`，加起来就是完整的状态。所以 square 的任务不是编译器生成的匿名状态机，而是一段**续延快照**（`UnwindFrame`：`ra` + 整条调用栈 + 活动的 try handler 栈），park 时 unwind 出来，wake 时 rewind 回 VM 接着跑。注册表还是那张`BTreeMap<u32, Entry>`，只是 Entry 里装的不是 Waker 而是 `Rc<Task>`。
 
-其次是**唤醒入口合一**。Demo 里`wake_by_id`和`deliver`是两个导出——前者裸唤醒、后者带结果。square 把它们收敛成了一个`call_cb(id, ptr, len)`：零实参即裸唤醒，带实参则按 JSON 解析投递（0 个参为 nil、1 个为该值、n 个打包成 vec 进首参），`{"__sq_err": msg}`对象则转成语言级错误，`try`可以直接捕获。宿主侧的导入也从`js_sleep`/`js_fetch`各一个收敛为`js_call`/`js_await_call`两个通用入口：按点路径解析宿主函数、展开实参调用，同步结果打包返回、异步结果按 Promise `then/catch` 回调。`sleep`因此在语言里只是一行普通函数——`[= sleep /[ms] [await '__square_sleep' [vec ms]]]`。顺带多了个新唤醒来源：square 闭包作为实参传给 JS 时序列化成`{"__sq_cb": id}`句柄，宿主把它换成 JS 函数，调用它就是一次带参的`call_cb`——事件/Promise 型 API 天然契合。
+其次是**唤醒入口合一**。Demo 里`wake_by_id`和`deliver`是两个导出——前者裸唤醒、后者带结果。square 把它们收敛成了一个`call_cb(id, ptr, len)`：零实参即裸唤醒，带实参则按 JSON 解析投递（0 个参为 nil、1 个为该值、n 个打包成 vec 进首参），`{"__sq_err": msg}`对象则转成语言级错误，`try`可以直接捕获。宿主侧的导入也从`js_sleep`/`js_fetch`各一个收敛为`js_call`/`js_await_call`两个通用入口：按点路径解析宿主函数、展开实参调用，同步结果打包返回、异步结果按 Promise `then/catch` 回调。`sleep`因此在语言里只是一行普通函数——`[await 'eval' 'new Promise(...)']`，宿主不必注册任何专有全局。顺带多了个新唤醒来源：square 闭包作为实参传给 JS 时序列化成`{"__sq_cb": id}`句柄，宿主把它换成 JS 函数，调用它就是一次带参的`call_cb`——事件/Promise 型 API 天然契合。
 
 最后一条实战教训恰好**验证了上文关于`queueMicrotask`的分析**。square 早期的宿主同步回调吃过两个亏：宿主函数同步调用 square 回调（比如桥接`forEach`），重入发生在 syscall 执行的中途；更隐蔽的是`await`的同步结果（比如`Math.max`）若同步投递，任务还没 park 完，`tick`会把未 park 的任务当作已完成丢弃——随后 park 一个已经出队的任务，永久静默。最终宿主所有「立即投递」一律 microtask 化，与 wasm-bindgen 的 tick 防栈溢出殊途同归，只是我们防的不是栈深，而是重入时序。
 
