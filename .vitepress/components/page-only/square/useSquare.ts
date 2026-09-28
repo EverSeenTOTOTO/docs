@@ -132,12 +132,12 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
   };
 
   // ── JS FFI 桥（与 square 仓库 host.mjs 同构）──────────────────────────────
-  // 客机 [js 'path' [vec ...]] / [await 'path' [vec ...]] 经 host.js_call /
-  // host.js_await_call 进来：按点路径在 globalThis 解析、展开实参调用；
-  // square 闭包以 {"__sq_cb": id} 句柄跨界，这里换成 JS 函数——调用即把实参
-  // JSON 写回线性内存并 call_cb 唤醒对应任务。投递一律 microtask 化：
-  // 同步回调会在 syscall 执行中途重入 VM，await 的同步结果也会赶在 park
-  // 完成前唤醒（tick 会把未 park 的任务当已完成丢弃）。
+  // 客机 [js 'path' a1 ...] / [await 'path' a1 ...] / [promisify 'path' ...] 经
+  // host.js_call / host.js_await_call / host.js_await_cb 进来：按点路径在
+  // globalThis 解析、展开实参调用；square 闭包以 {"__sq_cb": id} 句柄跨界，
+  // 这里换成 JS 函数——调用即把实参 JSON 写回线性内存并 call_cb 唤醒对应任务。
+  // 投递一律 microtask 化：同步回调会在 syscall 执行中途重入 VM，await 的
+  // 同步结果也会赶在 park 完成前唤醒（tick 会把未 park 的任务当已完成丢弃）。
   const encoder = new TextEncoder();
 
   const squareCallback = (a: any) => {
@@ -210,6 +210,21 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
         }
         if (result === undefined) return 0n;
         return packResult(result);
+      },
+      // promisify 形态：实参中首个 {"__sq_cb": cb_id} 是唤醒句柄——宿主调用它即唤醒，
+      // 回调实参即结果；返回值忽略（唯一唤醒源是回调）。宿主异常以错误对象投递。
+      js_await_cb: (name_ptr: number, name_len: number, args_ptr: number, args_len: number, cb_id: number) => {
+        const name = readUtf8String(square.value!.memory.buffer, name_ptr, name_len);
+        const args = readCallArgs(args_ptr, args_len);
+        const { parent, resolved } = resolvePath(name);
+        if (typeof resolved !== 'function') {
+          return; // 无法调用：任务悬挂，与 Promise 永不 resolve 一致
+        }
+        try {
+          resolved.apply(parent, args);
+        } catch (e) {
+          queueMicrotask(() => sendToSquare(cb_id, [{ __sq_err: String(e) }]));
+        }
       },
       // await 形态：Promise 则 .then/.catch，同步值/异常 microtask 化立即回调
       js_await_call: (name_ptr: number, name_len: number, args_ptr: number, args_len: number, cb_id: number) => {
@@ -326,8 +341,7 @@ export const useSquare = (editor: Ref<CodeJar>, terminal: Ref<Terminal>) => {
 }
 
 export const INITIAL_CODE = `; sleep/defer 是异步原语上的普通函数，程序自带定义
-[= sleep /[ms]
-  [await 'eval' [+ 'new Promise(r => setTimeout(r, ' [+ [str ms] '))']]]
+[= sleep /[ms] [promisify 'setTimeout' /[] nil ms]]
 [= defer /[f] [js 'queueMicrotask' f]]
 
 [let fib /[n]

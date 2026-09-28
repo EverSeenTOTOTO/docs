@@ -792,17 +792,18 @@ RUSTFLAGS="-C link-arg=-zstack-size=65536" cargo build --target=wasm32-unknown-u
 
 ### 异步：await、回调跨界与 call_cb
 
-`sleep`、`defer`曾一度是内建，对应 Web 环境的 `setTimeout`、`queueMicrotask`。后来我把整个异步层收敛成两个原语，它们降级成了普通函数——sleep 就是 eval 一个 Promise，宿主无需注册任何 square 专有全局：
+`sleep`、`defer`曾一度是内建，对应 Web 环境的 `setTimeout`、`queueMicrotask`。后来我把整个异步层收敛成两个原语，它们降级成了普通函数——宿主无需注册任何 square 专有全局：
 
 ```scheme
-[= sleep /[ms]
-  [await 'eval' [+ 'new Promise(r => setTimeout(r, ' [+ [str ms] '))']]]
+[= sleep /[ms] [promisify 'setTimeout' /[] nil ms]]
 [= defer /[f] [js 'queueMicrotask' f]]
 ```
 
-两个原语其一是**await**：`[await 'path' arg1 ...]`（实参散传，vec 值作为单实参即数组）调用宿主函数并 park 等待。参数序列化成 JSON 写进线性内存，经`host.js_await_call`导入交给宿主；宿主解析点路径、展开调用，结果是 Promise 则`.then/.catch`，同步值则 microtask 化立即回调。回调的入口统一是导出的`call_cb(id, ptr, len)`：实参数组 JSON 写回线性内存，唤醒 id 对应的任务，投递的值就是 await 的结果。
+Promise 约定的入口是**await**：`[await 'path' arg1 ...]`（实参散传，vec 值作为单实参即数组）调用宿主函数并 park 等待。参数序列化成 JSON 写进线性内存，经`host.js_await_call`导入交给宿主；宿主解析点路径、展开调用，结果是 Promise 则`.then/.catch`，同步值则 microtask 化立即回调。回调的入口统一是导出的`call_cb(id, ptr, len)`：实参数组 JSON 写回线性内存，唤醒 id 对应的任务，投递的值就是 await 的结果。
 
-其二是**闭包跨界**：square 闭包作为实参传给 JS 时，序列化为`{"__sq_cb": id}`句柄，宿主把它换成 JS 函数——调用它就是一次`call_cb`唤醒。事件/Promise 型 API 天然契合；宿主异常和 Promise 拒绝以`{"__sq_err": msg}`回传，客机转成语言级错误，`try`可以直接捕获。
+回调约定的入口是**promisify**：回调风格宿主函数的 Promise 化——实参里的闭包标记回调位置（写在哪个参数位，唤醒句柄就注入到哪），宿主调用它即以其实参为结果（多实参以 vec 进首参）。标记闭包要带个哑体（`/[] nil`）：`fn -> / expand expr` 会贪婪吞掉后随表达式作 body，不带的话下一个实参会被吞进闭包里——这是个实测踩过的坑。
+
+其三是**闭包跨界**：square 闭包作为实参传给 JS 时，序列化为`{"__sq_cb": id}`句柄，宿主把它换成 JS 函数——调用它就是一次`call_cb`唤醒。事件/Promise 型 API 天然契合；宿主异常和 Promise 拒绝以`{"__sq_err": msg}`回传，客机转成语言级错误，`try`可以直接捕获。
 
 至于「挂起」本身，它还是 **VM 状态保存**——和上文「延续的实现」同一套 unwind/rewind，区别只在于状态由调度器持有、由宿主事件循环驱动恢复：任务就是一段`UnwindFrame`快照（连同活动的 try handler 栈一起快照，任务交错时各自的 try 域互不串扰），`tick`把队头任务的快照 rewind 回 VM 续跑到下一个 park 或完成。调试这套东西时挖出过三个颇有普遍价值的 bug——哨兵 ra 覆盖了恢复中闭包帧的活返回地址、闭包任务的 ra 默认值引发“从程序头重跑”的级联、同步投递赶在 park 完成之前——都记在仓库的 OPTIMIZATION.md 里了。
 
